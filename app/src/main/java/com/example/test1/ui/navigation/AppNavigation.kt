@@ -1,8 +1,11 @@
 package com.example.test1.ui.navigation
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.datastore.preferences.preferencesDataStore
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -10,18 +13,18 @@ import com.example.test1.ui.settings.SettingsScreen
 import com.example.test1.ui.register.RegisterScreen
 import com.example.test1.ui.schedule.ScheduleScreen
 import com.example.test1.ui.login.LoginScreen
+import com.example.test1.ui.settings.GroupSelectionScreen
+import com.example.test1.ui.settings.SettingsViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
-@Composable
-fun AppNavigation() {
-    val navController = rememberNavController()
-    val firebaseAuth = remember { Firebase.auth } // Pobieramy instancję auth
 
-    // --- NOWA, KLUCZOWA SEKCJA ---
-    // Ten efekt będzie nasłuchiwał na zmiany stanu zalogowania przez cały czas,
-    // gdy AppNavigation jest aktywne na ekranie.
+@Composable
+fun AppNavigation(settingsViewModel: SettingsViewModel) {
+    val navController = rememberNavController()
+    val firebaseAuth = remember { Firebase.auth }
+
     DisposableEffect(key1 = navController) {
         // Tworzymy listener
         val authStateListener = FirebaseAuth.AuthStateListener { auth ->
@@ -38,11 +41,8 @@ fun AppNavigation() {
             }
         }
 
-        // Dodajemy listener do Firebase Auth
         firebaseAuth.addAuthStateListener(authStateListener)
 
-        // onDispose zostanie wywołane, gdy komponent zniknie z ekranu.
-        // To jest BARDZO WAŻNE, aby uniknąć wycieków pamięci.
         onDispose {
             firebaseAuth.removeAuthStateListener(authStateListener)
         }
@@ -59,9 +59,6 @@ fun AppNavigation() {
         composable("login") {
             LoginScreen(
                 onLoginSuccess = {
-                    // Po udanym logowaniu, przejdź do ekranu głównego
-                    // i wyczyść stos nawigacji, aby użytkownik nie mógł
-                    // wrócić do ekranu logowania przyciskiem "wstecz".
                     navController.navigate("schedule") {
                         popUpTo("login") {
                             inclusive = true
@@ -73,16 +70,22 @@ fun AppNavigation() {
                 }
             )
         }
+        composable("group_selection") {
+            GroupSelectionScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
 
         // Definicja ekranu rejestracji
         composable("register") {
             RegisterScreen(
                 onNavigateToLogin = {
-                    navController.navigate("login") {
-                        popUpTo("login") {
-                            inclusive = true
-                        }
-                    }
+                    navController.popBackStack()
+                },
+                onRegisterSuccess = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -90,24 +93,31 @@ fun AppNavigation() {
         // Definicja ekranu rejestracji
         composable("settings") {
             SettingsScreen(
+                viewModel = settingsViewModel,
                 onLogout = {
                     // Po wylogowaniu, wróć do ekranu logowania
-                    Firebase.auth.signOut()
                     navController.navigate("login") {
                         popUpTo(navController.graph.startDestinationId) {
                             inclusive = true
                         }
                     }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToGroupSelection = {
+                    navController.navigate("group_selection")
                 }
             )
         }
 
-        // Definicja ekranu głównego (po zalogowaniu)
         composable("schedule") {
             ScheduleScreen(
                 onNavigateToSettings = {
-                    // Przejdź do ekranu ustawień
-                    navController.navigate("settings")
+                    navController.navigate("settings") {
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
             )
         }

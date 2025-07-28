@@ -1,8 +1,9 @@
 package com.example.test1.ui.register
 
-import androidx.activity.compose.LocalActivity
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -17,8 +18,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -28,48 +29,64 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.example.test1.ui.component.AcademyTitle
-import com.example.test1.ui.login.interFontFamily
-import com.example.test1.ui.login.primaryColor
-import com.example.test1.ui.login.subtextColor
-import com.example.test1.ui.settings.secondaryColor
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.test1.ui.component.NotificationBanner
+import kotlinx.coroutines.delay
+
 
 @Preview(showBackground = true)
 @Composable
 fun RegisterScreen(
     onRegisterSuccess: () -> Unit = {},
-    onNavigateToLogin: () -> Unit = {}
+    onNavigateToLogin: () -> Unit = {},
+    viewModel: RegisterViewModel = viewModel()
 ) {
-
-    var currentStep by remember { mutableIntStateOf(1) }
-    var albumNumber by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var externalPassword by remember { mutableStateOf("") }
-
+    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val activity = LocalActivity.current
+    var showSuccessBanner by remember { mutableStateOf(false) }
+    var showErrorBanner by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
+    val showLoadingOverlay = uiState.status == RegisterStatus.LOADING || showSuccessBanner || showErrorBanner
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            errorMessage = error
+            showErrorBanner = true
+            delay(3000L)
+            showErrorBanner = false
+            viewModel.onErrorMessageShown()
+        }
+    }
+
+    LaunchedEffect(uiState.status) {
+        if (uiState.status == RegisterStatus.SUCCESS && !showSuccessBanner) {
+            showSuccessBanner = true
+            delay(3000L)
+            onRegisterSuccess()
+            showSuccessBanner = false
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState()), // Dodajemy przewijanie dla mniejszych ekranów
-            verticalArrangement = Arrangement.Center, // To centruje całą zawartość w pionie
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(32.dp))
             AcademyTitle(fontSize = 34.sp)
             Spacer(modifier = Modifier.height(24.dp))
-            ProgressIndicator(totalSteps = 2, currentStep = currentStep)
+            ProgressIndicator(totalSteps = 2, currentStep = uiState.currentStep)
             Spacer(modifier = Modifier.height(24.dp))
 
             AnimatedContent(
-                targetState = currentStep,
+                targetState = uiState.currentStep,
                 transitionSpec = {
                     slideInHorizontally { width -> width } + fadeIn() togetherWith
                             slideOutHorizontally { width -> -width } + fadeOut()
@@ -77,81 +94,168 @@ fun RegisterScreen(
             ) { step ->
                 when (step) {
                     1 -> Step1Form(
-                        albumNumber, { albumNumber = it },
-                        password, { password = it },
-                        confirmPassword, { confirmPassword = it },
-                        onNextClicked = { currentStep = 2 }
+                        state = uiState,
+                        onAlbumNumberChange = viewModel::onAlbumNumberChange,
+                        onEmailChange = viewModel::onEmailChange,
+                        onPasswordChange = viewModel::onPasswordChange,
+                        onConfirmPasswordChange = viewModel::onConfirmPasswordChange,
+                        onNextClicked = viewModel::onNextStep
                     )
                     2 -> Step2Form(
-                        externalPassword, { externalPassword = it },
-                        onRegisterClicked = { /* Finalna logika rejestracji */ },
-                        onBackClicked = { currentStep = 1 }
+                        state = uiState,
+                        onExternalPassChange = viewModel::onVerbisPasswordChange,
+                        onRegisterClicked = viewModel::onRegisterClicked,
+                        onBackClicked = viewModel::onPreviousStep
                     )
                 }
             }
             Spacer(modifier = Modifier.height(48.dp))
             val annotatedText = buildAnnotatedString {
-                append("Masz już konto? ")
-                pushStringAnnotation(tag = "LOGIN", annotation = "login")
-                withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold, fontFamily = interFontFamily)) {
+                withStyle(style = MaterialTheme.typography.bodyMedium.toSpanStyle().copy(
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                ) {
+                    append("Masz już konto? ")
+                }
+                pushStringAnnotation("LOGIN", "login")
+                withStyle(style = MaterialTheme.typography.labelLarge.toSpanStyle().copy(
+                    color = MaterialTheme.colorScheme.primary)
+                ) {
                     append("Zaloguj się")
                 }
                 pop()
             }
             ClickableText(
                 text = annotatedText,
-                onClick = { offset ->
-                    annotatedText.getStringAnnotations(tag = "LOGIN", start = offset, end = offset)
-                        .firstOrNull()?.let {
-                            onNavigateToLogin()
-                        }
+                onClick = {
+                    if (uiState.status == RegisterStatus.IDLE || uiState.status == RegisterStatus.ERROR) {
+                        annotatedText.getStringAnnotations("LOGIN", it, it)
+                            .firstOrNull()?.let {
+                                onNavigateToLogin()
+                            }
+                    }
                 }
             )
 
             Spacer(modifier = Modifier.height(32.dp))
+        }
+        AnimatedVisibility(
+            visible = showSuccessBanner,
+            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 56.dp)
+                .zIndex(1f)
+        ) {
+            NotificationBanner(message = "Rejestracja zakończona sukcesem!")
+        }
+
+        AnimatedVisibility(
+            visible = showErrorBanner && errorMessage != null,
+            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 56.dp)
+                .zIndex(1f)
+        ) {
+            NotificationBanner(icon = Icons.Default.Block , message = errorMessage ?: "")
+        }
+        if (showLoadingOverlay) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f))
+                    .pointerInput(Unit) {} // blokuje wszystkie dotyki
+            )
         }
     }
 }
 
 @Composable
 fun Step1Form(
-    albumNumber: String, onAlbumNumberChange: (String) -> Unit,
-    password: String, onPasswordChange: (String) -> Unit,
-    confirmPassword: String, onConfirmPasswordChange: (String) -> Unit,
+    state: RegisterState,
+    onAlbumNumberChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onConfirmPasswordChange: (String) -> Unit,
     onNextClicked: () -> Unit
 ) {
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var confirmPasswordVisible by rememberSaveable { mutableStateOf(false) }
 
-    val passwordsMatch = password.isNotEmpty() && password == confirmPassword
-    val isFormValid = albumNumber.isNotBlank() && passwordsMatch
+    val passwordsMatch = state.password.isNotEmpty() && state.password == state.confirmPassword
+    val areFieldsFilled = state.albumNumber.isNotBlank() && state.email.isNotBlank()
+
+    // 2. Sprawdzamy, czy aplikacja nie jest w trakcie operacji w tle
+    val isActionAllowed = state.status == RegisterStatus.IDLE || state.status == RegisterStatus.ERROR
+
+    // 3. Łączymy warunki: przycisk jest aktywny, jeśli pola są wypełnione, hasła się zgadzają ORAZ aplikacja nie jest zajęta
+    val isButtonEnabled = passwordsMatch && areFieldsFilled && isActionAllowed
+
+
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Utwórz konto w aplikacji", style = MaterialTheme.typography.titleMedium, color = subtextColor)
+        Text("Utwórz konto w aplikacji", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
         Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedTextField(
-            value = albumNumber,
+            value = state.albumNumber,
             onValueChange = onAlbumNumberChange,
-            label = { Text("Numer albumu", fontFamily = interFontFamily) },
+            label = { Text("Numer albumu", style = MaterialTheme.typography.labelLarge) },
             leadingIcon = { Icon(Icons.Default.Person, null) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            isError = state.albumNumberError != null,
+            supportingText = {
+                state.albumNumberError?.let{
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = primaryColor,
-                focusedLabelColor = primaryColor,
-                cursorColor = primaryColor
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                cursorColor = MaterialTheme.colorScheme.primary
             )
         )
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
-            value = password,
+            value = state.email,
+            onValueChange = onEmailChange,
+            label = { Text("Email", style = MaterialTheme.typography.labelLarge) },
+            leadingIcon = { Icon(Icons.Default.Email, null) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            isError = state.emailError != null,
+            supportingText = {
+                state.emailError?.let{
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                cursorColor = MaterialTheme.colorScheme.primary
+            )
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = state.password,
             onValueChange = onPasswordChange,
-            label = { Text("Hasło", fontFamily = interFontFamily) }, leadingIcon = { Icon(Icons.Default.Lock, null) },
+            label = { Text("Hasło", style = MaterialTheme.typography.labelLarge) }, leadingIcon = { Icon(Icons.Default.Lock, null) },
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
                 val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
@@ -159,56 +263,76 @@ fun Step1Form(
             },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            isError = state.passwordError != null,
+            supportingText = {
+                state.passwordError?.let{
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = primaryColor,
-                focusedLabelColor = primaryColor,
-                cursorColor = primaryColor
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                cursorColor = MaterialTheme.colorScheme.primary
             )
         )
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
-            value = confirmPassword,
+            value = state.confirmPassword,
             onValueChange = onConfirmPasswordChange,
-            label = { Text("Potwierdź hasło", fontFamily = interFontFamily) },
+            label = { Text("Potwierdź hasło", style = MaterialTheme.typography.labelLarge) },
             leadingIcon = { Icon(Icons.Default.Lock, null) },
             visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
                 val image = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                 IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) { Icon(image, null) }
             },
-            isError = confirmPassword.isNotEmpty() && !passwordsMatch,
-            supportingText = { if (confirmPassword.isNotEmpty() && !passwordsMatch) { Text("Hasła nie są zgodne", color = MaterialTheme.colorScheme.error) } },
+            isError = state.confirmPasswordError != null,
+            supportingText = {
+                state.confirmPasswordError?.let{
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = primaryColor,
-                focusedLabelColor = primaryColor,
-                cursorColor = primaryColor
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                cursorColor = MaterialTheme.colorScheme.primary
             )
         )
 
         Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = onNextClicked, enabled = isFormValid, modifier = Modifier.fillMaxWidth().height(50.dp),shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = primaryColor)) {
-            Text("Dalej", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Button(onClick = onNextClicked, enabled = isButtonEnabled, modifier = Modifier.fillMaxWidth().height(50.dp),shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
+            Text("Dalej", style = MaterialTheme.typography.labelLarge)
         }
     }
 }
 
 @Composable
 fun Step2Form(
-    verbisPass: String, onExternalPassChange: (String) -> Unit,
+    state: RegisterState,
+    onExternalPassChange: (String) -> Unit,
     onRegisterClicked: () -> Unit,
     onBackClicked: () -> Unit
 ) {
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    val isEnabled = state.status == RegisterStatus.IDLE || state.status == RegisterStatus.ERROR
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Utwórz konto w aplikacji", style = MaterialTheme.typography.titleMedium, color = subtextColor)
+        Text("Weryfikacja w systemie uczelni", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
         Spacer(modifier = Modifier.height(24.dp))
 
         InfoBox(
@@ -217,10 +341,10 @@ fun Step2Form(
         Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedTextField(
-            value = verbisPass,
+            value = state.verbisPassword,
             onValueChange = onExternalPassChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Hasło do systemu Verbis", fontFamily = interFontFamily) },
+            label = { Text("Hasło do systemu Verbis", style = MaterialTheme.typography.labelLarge) },
             leadingIcon = { Icon(Icons.Default.Lock, null) },
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
@@ -230,23 +354,27 @@ fun Step2Form(
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = primaryColor,
-                focusedLabelColor = primaryColor,
-                cursorColor = primaryColor
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                cursorColor = MaterialTheme.colorScheme.primary
             )
         )
         Spacer(modifier = Modifier.height(32.dp))
         Button(
             onClick = onRegisterClicked,
-            enabled = verbisPass.isNotBlank(),
+            enabled = state.verbisPassword.isNotBlank() && isEnabled,
             modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
-            Text("Zarejestruj się i pobierz dane", fontWeight = FontWeight.Bold, fontSize = 16.sp, textAlign = TextAlign.Center)
+            Text(
+                text = "Zarejestruj się i pobierz dane",
+                style = MaterialTheme.typography.labelLarge,
+                textAlign = TextAlign.Center
+            )
         }
-        TextButton(onClick = onBackClicked) {
-            Text("Wróć", color = subtextColor)
+        TextButton(onClick = onBackClicked, enabled = isEnabled) {
+            Text("Wróć")
         }
     }
 }
@@ -259,7 +387,7 @@ fun ProgressIndicator(totalSteps: Int, currentStep: Int) {
                 modifier = Modifier
                     .size(12.dp)
                     .clip(CircleShape)
-                    .background(if (step == currentStep) primaryColor else secondaryColor)
+                    .background(if (step == currentStep) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary)
             )
         }
     }
@@ -271,12 +399,12 @@ fun InfoBox(text: String) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(secondaryColor)
+            .background(MaterialTheme.colorScheme.secondary)
             .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Default.Info, contentDescription = null, tint = primaryColor)
-        Text(text = text, style = MaterialTheme.typography.bodySmall, color = subtextColor)
+        Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Text(text = text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
     }
 }

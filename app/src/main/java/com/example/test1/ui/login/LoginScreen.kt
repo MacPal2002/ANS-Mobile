@@ -1,11 +1,19 @@
 package com.example.test1.ui.login
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
@@ -15,40 +23,22 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.test1.R
 import com.example.test1.ui.component.AcademyTitle
-
-
-val primaryColor = Color(0xFF212C5D)
-val subtextColor = Color.Gray
-
-val provider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs
-)
-
-val interFontFamily = FontFamily(
-    Font(GoogleFont("Inter"), provider)
-)
-
+import com.example.test1.ui.component.NotificationBanner
+import com.example.test1.ui.register.RegisterStatus
+import kotlinx.coroutines.delay
 
 @Composable
 fun LoginScreen(
@@ -64,156 +54,184 @@ fun LoginScreen(
     val context = LocalContext.current
 
 
-    // Efekt uboczny: nawigacja po udanym logowaniu
-    LaunchedEffect(key1 = uiState.isLoginSuccess) {
-        if (uiState.isLoginSuccess) {
-            Toast.makeText(context, "Logowanie udane!", Toast.LENGTH_SHORT).show()
+    // Krok 1: Dodajemy stan do kontrolowania widoczności banera
+    var showSuccessBanner by remember { mutableStateOf(false) }
+    val showLoadingOverlay = uiState.status == LoginStatus.LOADING || showSuccessBanner
+
+    LaunchedEffect(uiState.status) {
+        if (uiState.status == LoginStatus.SUCCESS && !showSuccessBanner) {
+            showSuccessBanner = true
+            delay(3000L)
             onLoginSuccess()
+            showSuccessBanner = false
         }
     }
 
-
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+    Box(modifier = Modifier.fillMaxSize()) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
 
-            AcademyTitle(fontSize = 34.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Zaloguj się, aby kontynuować",
-                style = MaterialTheme.typography.titleMedium,
-                color = subtextColor
-            )
-            Spacer(modifier = Modifier.height(48.dp))
-
-            OutlinedTextField(
-                value = uiState.studentId,
-                onValueChange = { loginViewModel.onStudentIdChange(it) },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Numer albumu", fontFamily = interFontFamily) },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Person, contentDescription = null)
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = primaryColor,
-                    focusedLabelColor = primaryColor,
-                    cursorColor = primaryColor
-                ),
-                isError = uiState.studentIdError != null, // Zmień kolor pola na czerwony, jeśli jest błąd
-                supportingText = {
-                    // Pokaż tekst błędu pod polem
-                    if (uiState.studentIdError != null) {
-                        Text(
-                            text = uiState.studentIdError!!,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = uiState.password,
-                onValueChange = { loginViewModel.onPasswordChange(it) },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Hasło", fontFamily = interFontFamily) },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Lock, contentDescription = null)
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                trailingIcon = {
-                    val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                    val description = if (passwordVisible) "Ukryj hasło" else "Pokaż hasło"
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(imageVector = image, contentDescription = description)
-                    }
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = primaryColor,
-                    focusedLabelColor = primaryColor,
-                    cursorColor = primaryColor
-                ),
-                isError = uiState.passwordError != null,
-                supportingText = {
-                    if (uiState.passwordError != null) {
-                        Text(
-                            text = uiState.passwordError!!,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
-            )
-            // --- NOWA SEKCJA DLA BŁĘDÓW OGÓLNYCH ---
-            if (uiState.genericError != null) {
+                AcademyTitle(fontSize = 34.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = uiState.genericError!!,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
+                    text = "Zaloguj się, aby kontynuować",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
-            }
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(48.dp))
 
-            Button(
-                onClick = { loginViewModel.login() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
-                enabled = !uiState.isLoading
-            ) {
-                Text(
-                    text = "Zaloguj się",
-                    fontFamily = interFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.height(48.dp))
-
-            val annotatedText = buildAnnotatedString {
-                withStyle(style = SpanStyle(color = subtextColor, fontFamily = interFontFamily)) {
-                    append("Nie masz konta? ")
-                }
-                // Dodajemy adnotację, aby uczynić tekst klikalnym
-                pushStringAnnotation(tag = "REGISTER", annotation = "register")
-                withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold, fontFamily = interFontFamily)) {
-                    append("Zarejestruj się")
-                }
-                pop()
-            }
-
-            ClickableText(
-                text = annotatedText,
-                onClick = { offset ->
-                    annotatedText.getStringAnnotations(tag = "REGISTER", start = offset, end = offset)
-                        .firstOrNull()?.let {
-                            onNavigateToRegister()
+                OutlinedTextField(
+                    value = uiState.albumNumber,
+                    enabled = (uiState.status != LoginStatus.LOADING),
+                    onValueChange = { loginViewModel.onAlbumNumberChange(it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Numer albumu", style = MaterialTheme.typography.labelLarge) },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Default.Person, contentDescription = null)
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    ),
+                    isError = uiState.albumNumberError != null,
+                    supportingText = {
+                        // Pokaż tekst błędu pod polem
+                        uiState.albumNumberError?.let {
+                            Text(
+                                text = it,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
+                    },
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = uiState.password,
+                    enabled = (uiState.status != LoginStatus.LOADING),
+                    onValueChange = { loginViewModel.onPasswordChange(it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Hasło", style = MaterialTheme.typography.labelLarge) },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Default.Lock, contentDescription = null)
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    trailingIcon = {
+                        val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                        val description = if (passwordVisible) "Ukryj hasło" else "Pokaż hasło"
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(imageVector = image, contentDescription = description)
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    ),
+                    isError = uiState.passwordError != null,
+                    supportingText = {
+                        uiState.passwordError?.let {
+                            Text(
+                                text = it,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    },
+                )
+                // --- NOWA SEKCJA DLA BŁĘDÓW OGÓLNYCH ---
+                uiState.genericError?.let {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Button(
+                    onClick = { loginViewModel.login() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    enabled = (uiState.status == LoginStatus.IDLE),
+                ) {
+                    Text(
+                        text = "Zaloguj się",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(48.dp))
+
+                val annotatedText = buildAnnotatedString {
+                    withStyle(style = MaterialTheme.typography.bodyMedium.toSpanStyle().copy(
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    ) {
+                        append("Nie masz konta? ")
+                    }
+                    pushStringAnnotation("REGISTER", "register")
+                    withStyle(style = MaterialTheme.typography.labelLarge.toSpanStyle().copy(
+                        color = MaterialTheme.colorScheme.primary)
+                    ) {
+                        append("Zarejestruj się")
+                    }
+                    pop()
+                }
+
+                ClickableText(
+                    text = annotatedText,
+                    onClick = { offset -> annotatedText.getStringAnnotations("REGISTER", offset, offset)
+                                .firstOrNull()?.let {
+                                    onNavigateToRegister()
+                                }
+                    }
+                )
+            }
+        }
+        AnimatedVisibility(
+            visible = showSuccessBanner,
+            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 56.dp)
+                .zIndex(1f)
+        ) {
+            NotificationBanner(message = "Logowanie udane!")
+        }
+        if (showLoadingOverlay) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f))
+                    .pointerInput(Unit) {} // blokuje wszystkie dotyki
             )
+
         }
     }
 }

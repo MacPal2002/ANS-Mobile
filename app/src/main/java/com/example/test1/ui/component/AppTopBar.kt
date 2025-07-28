@@ -24,15 +24,15 @@ fun AppTopBar(
     actionIcon: ImageVector? = null,
     onActionClick: (() -> Unit)? = null
 ) {
-    val primaryColor = Color(0xFF212C5D)
-    val secondaryColor = Color(0xFFE8EAF6)
+/*    val primaryColor = Color(0xFF212C5D)
+    val secondaryColor = Color(0xFFE8EAF6)*/
 
     Column(modifier = modifier.fillMaxWidth()) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top=38.dp),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.background,
             shadowElevation = 0.dp
         ) {
             Row(
@@ -49,12 +49,12 @@ fun AppTopBar(
                             onClick = onNavigationIconClick,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(secondaryColor)
+                                .background(MaterialTheme.colorScheme.secondary)
                         ) {
                             Icon(
                                 imageVector = navigationIcon,
                                 contentDescription = "Navigation Icon",
-                                tint = primaryColor
+                                tint = MaterialTheme.colorScheme.onSecondary
                             )
                         }
                     }
@@ -73,12 +73,12 @@ fun AppTopBar(
                             onClick = onActionClick,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(secondaryColor)
+                                .background(MaterialTheme.colorScheme.secondary)
                         ) {
                             Icon(
                                 imageVector = actionIcon,
                                 contentDescription = "Action Icon",
-                                tint = primaryColor
+                                tint = MaterialTheme.colorScheme.onSecondary
                             )
                         }
                     }
@@ -87,7 +87,7 @@ fun AppTopBar(
         }
         HorizontalDivider(
             thickness = 1.dp,
-            color = Color(0xFFE0E0E0)
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         )
     }
 }

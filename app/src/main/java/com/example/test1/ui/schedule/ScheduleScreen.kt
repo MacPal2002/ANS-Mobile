@@ -1,9 +1,11 @@
 package com.example.test1.ui.schedule
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,14 +29,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,8 +49,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,11 +72,10 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.test1.ui.component.AppTopBar
-import com.example.test1.ui.login.primaryColor
-import com.example.test1.ui.login.subtextColor
-import com.example.test1.ui.settings.secondaryColor
 import kotlinx.coroutines.delay
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -75,15 +83,8 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
-
-// --- DEFINICJE STYLU I DANYCH ---
-
-
-val eventColor1 = Color(0xFFE8EAF6)
-val eventColor2 = Color(0xFFDCEEEB)
-val eventColor3 = Color(0xFFF8EAEA)
-val textColor = Color(0xFF1F1F1F)
-
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextFieldDefaults
 
 data class ScheduleEvent(
     val title: String,
@@ -91,28 +92,6 @@ data class ScheduleEvent(
     val startTime: LocalDateTime,
     val endTime: LocalDateTime,
     val color: Color
-)
-
-// Nowa, rozbudowana lista wydarzeń
-val allMockEvents = listOf(
-    // --- WCZORAJ ---
-    ScheduleEvent("Algebra liniowa", listOf("prof. dr hab. Ewa Czerwińska", "A-1 404", "wykład"), LocalDateTime.now().minusDays(1).withHour(11).withMinute(15), LocalDateTime.now().minusDays(1).withHour(13).withMinute(0), eventColor1),
-    ScheduleEvent("Wychowanie fizyczne", listOf("mgr Janusz Sportowy", "Hala sportowa"), LocalDateTime.now().minusDays(1).withHour(15).withMinute(0), LocalDateTime.now().minusDays(1).withHour(16).withMinute(30), eventColor3),
-
-    // --- DZISIAJ ---
-    ScheduleEvent("Język włoski", listOf("mgr Agata Borkowska", "Bud.gł. 3", "lektorat"), LocalDateTime.now().withHour(8).withMinute(0), LocalDateTime.now().withHour(9).withMinute(30), eventColor1),
-    ScheduleEvent("Przerwa obiadowa", listOf("Czas na odpoczynek"), LocalDateTime.now().withHour(9).withMinute(30), LocalDateTime.now().withHour(11).withMinute(30), eventColor3),
-    ScheduleEvent("Metody behawioralne", listOf("dr Magdalena Adamczyk-Kowalczuk", "Paw.F 615", "ćwiczenia"), LocalDateTime.now().withHour(11).withMinute(30), LocalDateTime.now().withHour(13).withMinute(0), eventColor2),
-    ScheduleEvent("Inżynieria oprogramowania", listOf("dr inż. Adam Nowak", "Lab. 201, C-3", "laboratorium"), LocalDateTime.now().withHour(13).withMinute(15), LocalDateTime.now().withHour(15).withMinute(0), eventColor1),
-
-    // --- JUTRO ---
-    ScheduleEvent("Analiza matematyczna", listOf("prof. dr hab. Jan Nowak", "A-2 301", "wykład"), LocalDateTime.now().plusDays(1).withHour(10).withMinute(0), LocalDateTime.now().plusDays(1).withHour(11).withMinute(30), eventColor1),
-    ScheduleEvent("Bazy danych", listOf("dr inż. Anna Kulesza", "Lab. 108, C-2", "laboratorium"), LocalDateTime.now().plusDays(1).withHour(11).withMinute(45), LocalDateTime.now().plusDays(1).withHour(13).withMinute(15), eventColor2),
-
-    // --- POJUTRZE (brak zajęć, aby przetestować pusty ekran) ---
-
-    // --- ZA 3 DNI ---
-    ScheduleEvent("Programowanie mobilne", listOf("mgr inż. Paweł Kowalski", "Lab. 315, C-1", "projekt"), LocalDateTime.now().plusDays(3).withHour(9).withMinute(0), LocalDateTime.now().plusDays(3).withHour(11).withMinute(0), eventColor2)
 )
 
 // Definicje stałych dla layoutu siatki
@@ -125,25 +104,36 @@ private val DayStartHour = 7
 @Composable
 fun ScheduleScreen(
     onNavigateToSettings: () -> Unit,
+    scheduleViewModel: ScheduleViewModel = viewModel(), // Wstrzyknięcie ViewModel
 ) {
-    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    // Krok 1: Obserwuj stan z ViewModelu
+    val uiState by scheduleViewModel.uiState.collectAsState()
+
+    val tertiaryContainerColor = MaterialTheme.colorScheme.tertiaryContainer
+    val secondaryContainerColor = MaterialTheme.colorScheme.secondaryContainer
+
+    // Stan specyficzny dla UI (np. widoczność dialogu) może pozostać lokalny
     var showMonthPicker by remember { mutableStateOf(false) }
 
     if (showMonthPicker) {
         MonthCalendarDialog(
-            initialDate = selectedDate,
+            initialDate = uiState.selectedDate,
             onDateSelected = {
-                selectedDate = it
+                // Krok 2: Akcje użytkownika wywołują metody na ViewModelu
+                scheduleViewModel.onDateSelected(it)
                 showMonthPicker = false
             },
             onDismissRequest = { showMonthPicker = false }
         )
     }
 
-    val weekDays = remember(selectedDate) {
-        val startOfWeek = selectedDate.minusDays(selectedDate.dayOfWeek.value.toLong() - 1)
+    // Obliczenia zależne od stanu wykonujemy na danych z ViewModelu
+    val weekDays = remember(uiState.selectedDate) {
+        val startOfWeek = uiState.selectedDate.minusDays(uiState.selectedDate.dayOfWeek.value.toLong() - 1)
         List(7) { i -> startOfWeek.plusDays(i.toLong()) }
     }
+
+    // Stan dla wskaźnika aktualnego czasu może pozostać lokalny
     var currentTime by remember { mutableStateOf(LocalTime.now()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -151,8 +141,26 @@ fun ScheduleScreen(
             delay(60000L)
         }
     }
-    val filteredEvents = remember(selectedDate, allMockEvents) {
-        allMockEvents.filter { event -> event.startTime.toLocalDate() == selectedDate }
+
+    // Krok 3: Mapuj dane z Modelu (ScheduleItem) na dane dla Widoku (ScheduleEvent)
+    val displayEvents = remember(uiState.events) {
+        uiState.events.map { item ->
+            ScheduleEvent(
+                title = item.subjectFullName,
+                details = listOfNotNull(
+                    item.lecturers.firstOrNull()?.get("name") as? String,
+                    item.rooms.firstOrNull()?.get("name") as? String,
+                    item.classType?.let { "Rodzaj: $it" }
+                ),
+                startTime = item.getStartLocalDateTime(),
+                endTime = item.getEndLocalDateTime(),
+                color = if ((item.classType ?: "").contains("W", ignoreCase = true)) {
+                    tertiaryContainerColor
+                } else {
+                    secondaryContainerColor
+                }
+            )
+        }
     }
 
     MaterialTheme {
@@ -160,10 +168,10 @@ fun ScheduleScreen(
             topBar = {
                 AppTopBar(
                     actionIcon = Icons.Default.Settings,
-                    onActionClick = { onNavigateToSettings() },
+                    onActionClick = onNavigateToSettings,
                 )
             },
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -171,26 +179,131 @@ fun ScheduleScreen(
                     .padding(paddingValues)
             ) {
                 DateHeader(
-                    selectedDate = selectedDate,
-                    onTodayClick = { selectedDate = LocalDate.now() },
+                    selectedDate = uiState.selectedDate,
+                    onTodayClick = { scheduleViewModel.onDateSelected(LocalDate.now()) },
                     onDateClick = { showMonthPicker = true }
                 )
+                if (uiState.observedGroups.size > 1) {
+                    GroupSelector(
+                        groups = uiState.observedGroups,
+                        selectedGroupId = uiState.selectedGroupId,
+                        onGroupSelected = { scheduleViewModel.onGroupSelected(it) }
+                    )
+                }
                 HorizontalDayPicker(
                     dates = weekDays,
-                    selectedDate = selectedDate,
-                    onDateSelected = { newDate -> selectedDate = newDate }
+                    selectedDate = uiState.selectedDate,
+                    onDateSelected = { newDate -> scheduleViewModel.onDateSelected(newDate) }
                 )
-                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
-                DaySchedule(
-                    events = filteredEvents,
-                    isToday = selectedDate == LocalDate.now(),
-                    currentTime = currentTime
-                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                // Krok 4: Wyświetlaj UI w zależności od stanu (ładowanie, błąd, sukces)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    } else if (uiState.errorMessage != null) {
+                        Text(
+                            text = uiState.errorMessage!!,
+                            color = Color.Red,
+                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    } else if (displayEvents.isEmpty()) {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DoneAll,
+                                contentDescription = "Brak zajęć",
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                            )
+                            Text(
+                                text = "Brak zajęć",
+                                color = MaterialTheme.colorScheme.onBackground,
+                                fontSize = 16.sp
+                            )
+                        }
+                    } else {
+                        DaySchedule(
+                            events = displayEvents,
+                            isToday = uiState.selectedDate == LocalDate.now(),
+                            currentTime = currentTime
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GroupSelector(
+    groups: List<ObservedGroup>,
+    selectedGroupId: Int?,
+    onGroupSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedGroupName = groups.find { it.id == selectedGroupId }?.name ?: "Wybierz grupę"
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+        ) {
+            OutlinedTextField(
+                value = selectedGroupName,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Wybrana grupa", style = MaterialTheme.typography.labelLarge) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Group,
+                        contentDescription = "Grupa"
+                    )
+                },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = Color.LightGray,
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                )
+            )
+
+            // ✅ ZMIANY W ROZWIJANYM MENU
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                groups.forEach { group ->
+                    DropdownMenuItem(
+                        text = { Text(group.name) },
+                        onClick = {
+                            onGroupSelected(group.id)
+                            expanded = false
+                        },
+                        contentPadding = PaddingValues(horizontal = 16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
 
 // --- GŁÓWNY KOMPONENT NOWEGO WIDOKU PLANU ---
 
@@ -204,10 +317,38 @@ fun DaySchedule(
 ) {
     val scrollState = rememberScrollState()
 
-    // Automatyczne przewinięcie do aktualnej godziny przy starcie
-    LaunchedEffect(Unit) {
-        val initialOffset = (currentTime.hour - DayStartHour - 1) * HourHeight.value
-        scrollState.scrollTo(initialOffset.toInt().coerceAtLeast(0))
+    val density = LocalDensity.current
+    val hourHeightPx = remember(density) {
+        with(density) { HourHeight.toPx() }
+    }
+
+    // Efekt będzie uruchamiany za każdym razem, gdy zmieni się lista wydarzeń (czyli dzień)
+    LaunchedEffect(events) {
+        if (isToday) {
+            // Dla dzisiejszego dnia: przewiń do aktualnej godziny
+            val hourOffset = currentTime.hour - DayStartHour
+            val minuteOffset = currentTime.minute / 60f
+            val totalOffsetPx = (hourOffset + minuteOffset) * hourHeightPx
+            scrollState.animateScrollTo(totalOffsetPx.toInt().coerceAtLeast(0))
+        } else {
+            // ✅ NOWA LOGIKA: Dla innych dni
+            if (events.isNotEmpty()) {
+                // Jeśli są zajęcia, znajdź pierwsze z nich
+                val firstEvent = events.minByOrNull { it.startTime }
+                if (firstEvent != null) {
+                    // Oblicz pozycję pierwszych zajęć i przewiń do nich
+                    val hourOffset = firstEvent.startTime.hour - DayStartHour
+                    val minuteOffset = firstEvent.startTime.minute / 60f
+                    val totalOffsetPx = (hourOffset + minuteOffset) * hourHeightPx
+                    // Przewijamy odrobinę wyżej, aby był margines
+                    val finalOffset = (totalOffsetPx - (hourHeightPx / 2)).coerceAtLeast(0f)
+                    scrollState.animateScrollTo(finalOffset.toInt())
+                }
+            } else {
+                // Jeśli nie ma zajęć, przewiń na samą górę
+                scrollState.animateScrollTo(0)
+            }
+        }
     }
 
     // Tło z liniami godzinowymi
@@ -247,7 +388,7 @@ fun TimeGutter(hourHeight: Dp, modifier: Modifier = Modifier) {
                 Text(
                     text = String.format("%d:00", hour),
                     style = MaterialTheme.typography.bodySmall,
-                    color = subtextColor
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
             }
         }
@@ -265,6 +406,7 @@ fun EventGrid(
     val density = LocalDensity.current
     val hourHeightPx = with(density) { hourHeight.toPx() }
 
+    val lineColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)
     // ZMIANA: Dodajemy Box jako główny kontener, aby móc rysować tło i layout
     Box(modifier = modifier) {
 
@@ -274,7 +416,7 @@ fun EventGrid(
             for (hour in DayStartHour..22) {
                 val yPosition = (hour - DayStartHour) * hourHeightPx
                 drawLine(
-                    color = Color(0xFFE0E0E0), // Możesz tu zmienić kolor/przezroczystość linii
+                    color = lineColor,
                     start = Offset(x = 0f, y = yPosition),
                     end = Offset(x = size.width, y = yPosition),
                     strokeWidth = 1.dp.toPx()
@@ -346,19 +488,10 @@ fun EventCard(event: ScheduleEvent) {
                 modifier = Modifier.align(Alignment.TopStart),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = event.title,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textColor
-                )
+                Text(text = event.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
                 Spacer(modifier = Modifier.height(4.dp))
                 event.details.forEach { detail ->
-                    Text(
-                        text = detail,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = subtextColor
-                    )
+                    Text(text = detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
                 }
             }
 
@@ -370,16 +503,11 @@ fun EventCard(event: ScheduleEvent) {
                 Icon(
                     imageVector = Icons.Default.Schedule,
                     contentDescription = "Czas trwania",
-                    tint = subtextColor.copy(alpha = 0.7f),
+                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                     modifier = Modifier.size(14.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = timeRange,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = subtextColor.copy(alpha = 0.7f),
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text(text = timeRange, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
             }
         }
     }
@@ -412,9 +540,9 @@ fun DateHeader(
 
     val currentYear = LocalDate.now().year
     val pattern = if (selectedDate.year == currentYear) {
-        "EEEE, d MMMM" // Format bez roku, np. "Wtorek, 24 czerwca"
+        "E, d MMMM" // Format bez roku, np. "Wt., 24 czerwca"
     } else {
-        "EEEE, d MMMM uuuu" // Pełny format z rokiem, np. "Środa, 25 czerwca 2026"
+        "E, d MMMM uuuu" // Pełny format z rokiem, np. "Śr., 25 czerwca 2026"
     }
     val formatter = DateTimeFormatter.ofPattern(pattern, Locale("pl"))
     val isToday = selectedDate == LocalDate.now()
@@ -426,7 +554,6 @@ fun DateHeader(
             .height(56.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Pusty Box po lewej stronie dla zachowania symetrii
         Box(
             modifier = Modifier.width(90.dp),
             contentAlignment = Alignment.Center
@@ -435,14 +562,14 @@ fun DateHeader(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(secondaryColor)
+                    .background(MaterialTheme.colorScheme.secondary)
                     .clickable(onClick = onDateClick),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Today,
                     contentDescription = "Otwórz kalendarz",
-                    tint = primaryColor,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -451,10 +578,8 @@ fun DateHeader(
         // Tytuł z datą
         Text(
             text = selectedDate.format(formatter).replaceFirstChar { it.titlecase(Locale("pl")) },
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
-            color = primaryColor,
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
+            color = MaterialTheme.colorScheme.primary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
@@ -472,14 +597,14 @@ fun DateHeader(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(secondaryColor)
+                        .background(MaterialTheme.colorScheme.secondary)
                         .clickable(onClick = onTodayClick),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.ArrowBackIosNew,
                         contentDescription = "Wróć do dzisiaj",
-                        tint = primaryColor,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -495,7 +620,7 @@ fun HorizontalDayPicker(
     onDateSelected: (LocalDate) -> Unit
 ) {
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(dates) { date ->
@@ -512,10 +637,31 @@ fun HorizontalDayPicker(
 fun DayPill(date: LocalDate, isSelected: Boolean, onClick: () -> Unit) {
     val dayOfWeekFormatter = DateTimeFormatter.ofPattern("E", Locale("pl"))
     val dayOfMonth = date.dayOfMonth.toString()
-    val dayOfWeek = date.format(dayOfWeekFormatter).uppercase()
+    val dayOfWeekText = date.format(dayOfWeekFormatter).uppercase()
 
-    val containerColor = if (isSelected) primaryColor else Color.Transparent
-    val contentColor = if (isSelected) Color.White else textColor
+    val isToday = date == LocalDate.now()
+    val isWeekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
+
+    // --- NOWA, ZUNIFIKOWANA LOGIKA KOLORÓW ---
+
+    val containerColor = when {
+        isSelected -> MaterialTheme.colorScheme.primary     // Ciemne tło dla zaznaczonego dnia
+        isToday -> MaterialTheme.colorScheme.tertiaryContainer      // Jasne tło dla dzisiejszego dnia
+        else -> Color.Transparent      // Brak tła dla pozostałych
+    }
+
+    val dayOfMonthColor = when {
+        isSelected -> Color.White      // Biały tekst na ciemnym tle
+        isToday -> MaterialTheme.colorScheme.onTertiaryContainer       // Ciemny tekst (główny kolor) na jasnym tle
+        else -> MaterialTheme.colorScheme.onBackground              // Domyślny kolor tekstu
+    }
+
+    val dayOfWeekColor = when {
+        isSelected -> Color.White
+        isToday -> MaterialTheme.colorScheme.onTertiaryContainer
+        isWeekend -> Color(0xFFB71C1C)  // Czerwony dla weekendu
+        else -> MaterialTheme.colorScheme.onBackground
+    }
 
     Column(
         modifier = Modifier
@@ -527,8 +673,8 @@ fun DayPill(date: LocalDate, isSelected: Boolean, onClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(text = dayOfWeek, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = contentColor)
-        Text(text = dayOfMonth, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = contentColor)
+        Text(text = dayOfWeekText, style = MaterialTheme.typography.labelSmall, color = dayOfWeekColor)
+        Text(text = date.dayOfMonth.toString(), style = MaterialTheme.typography.titleMedium, color = dayOfMonthColor)
     }
 }
 
@@ -572,7 +718,7 @@ fun MonthCalendarDialog(
                 Row(modifier = Modifier.fillMaxWidth()) {
                     daysOfWeek.forEach { day ->
                         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            Text(text = day, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = subtextColor)
+                            Text(text = day, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
                         }
                     }
                 }
@@ -638,14 +784,14 @@ fun CalendarDay(
 ) {
     val isToday = date == LocalDate.now()
     val backgroundColor = when {
-        isSelected -> primaryColor
-        isToday -> secondaryColor
+        isSelected -> MaterialTheme.colorScheme.primary
+        isToday -> MaterialTheme.colorScheme.secondary
         else -> Color.Transparent
     }
     val textColor = when {
         isSelected -> Color.White
-        isToday -> primaryColor
-        else -> textColor
+        isToday -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSecondaryContainer
     }
 
     Box(

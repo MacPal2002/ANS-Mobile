@@ -25,24 +25,24 @@ class LoginViewModel : ViewModel() {
     val uiState = _uiState.asStateFlow()
 
     // Funkcja wywoływana przez UI, gdy zmieni się tekst w polu email
-    fun onStudentIdChange(studentId: String) {
-        _uiState.update { it.copy(studentId = studentId, studentIdError = null, genericError = null) }
+    fun onAlbumNumberChange(albumNumber: String) {
+        _uiState.update { it.copy(albumNumber = albumNumber, albumNumberError = null, genericError = null, status = LoginStatus.IDLE) }
     }
 
     fun onPasswordChange(password: String) {
-        _uiState.update { it.copy(password = password, passwordError = null, genericError = null) }
+        _uiState.update { it.copy(password = password, passwordError = null, genericError = null, status = LoginStatus.IDLE) }
     }
 
     // Główna funkcja logiki logowania
     fun login() {
         // 1. Czyszczenie starych błędów i walidacja pól
-        _uiState.update { it.copy(studentIdError = null, passwordError = null, genericError = null) }
-        val studentId = _uiState.value.studentId
+        _uiState.update { it.copy(albumNumberError = null, passwordError = null, genericError = null) }
+        val albumNumber = _uiState.value.albumNumber
         val password = _uiState.value.password
         var hasError = false
 
-        if (studentId.isBlank()) {
-            _uiState.update { it.copy(studentIdError = "Pole 'numer albumu' nie może być puste") }
+        if (albumNumber.isBlank()) {
+            _uiState.update { it.copy(albumNumberError = "Pole 'numer albumu' nie może być puste") }
             hasError = true
         }
         if (password.isBlank()) {
@@ -53,16 +53,16 @@ class LoginViewModel : ViewModel() {
 
         // 2. Rozpoczęcie procesu logowania (etap 1: zapytanie do Firestore)
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(status = LoginStatus.LOADING) }
 
             db.collection("students")
-                .whereEqualTo("studentId", studentId)
+                .whereEqualTo("albumNumber", albumNumber)
                 .limit(1)
                 .get()
                 .addOnSuccessListener { documents ->
                     if (documents.isEmpty) {
                         // Nie znaleziono studenta o takim numerze
-                        _uiState.update { it.copy(isLoading = false, genericError = "Student o podanym numerze albumu nie istnieje.") }
+                        _uiState.update { it.copy(status = LoginStatus.ERROR, genericError = "Student o podanym numerze albumu nie istnieje.") }
                     } else {
                         // Znaleziono dokument, pobieramy z niego email
                         val email = documents.first().getString("email")
@@ -71,13 +71,13 @@ class LoginViewModel : ViewModel() {
                             signInToFirebaseAuth(email, password)
                         } else {
                             // Sytuacja awaryjna: znaleziono studenta, ale nie ma zapisanego emaila
-                            _uiState.update { it.copy(isLoading = false, genericError = "Błąd danych użytkownika. Skontaktuj się z administratorem.") }
+                            _uiState.update { it.copy(status = LoginStatus.ERROR, genericError = "Błąd danych użytkownika. Skontaktuj się z administratorem.") }
                         }
                     }
                 }
                 .addOnFailureListener { exception ->
                     // Błąd połączenia z bazą danych
-                    _uiState.update { it.copy(isLoading = false, genericError = "Błąd połączenia z bazą danych: ${exception.message}") }
+                    _uiState.update { it.copy(status = LoginStatus.ERROR, genericError = "Błąd połączenia z bazą danych: ${exception.message}") }
                 }
         }
     }
@@ -105,11 +105,11 @@ class LoginViewModel : ViewModel() {
                     }
                     // Aktualizujemy stan UI, aby przejść dalej.
                     // Robimy to od razu, nie czekając na wynik aktualizacji w Firestore.
-                    _uiState.update { it.copy(isLoading = false, isLoginSuccess = true) }
+                    _uiState.update { it.copy(status = LoginStatus.SUCCESS) }
 
                 } else {
                     // Błąd logowania w Auth - na tym etapie niemal na pewno oznacza to złe hasło.
-                    _uiState.update { it.copy(isLoading = false, genericError = "Nieprawidłowe hasło.") }
+                    _uiState.update { it.copy(status = LoginStatus.ERROR, genericError = "Nieprawidłowe hasło.") }
                 }
             }
     }

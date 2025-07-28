@@ -27,11 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-val primaryColor = Color(0xFF212C5D)
-val secondaryColor = Color(0xFFE8EAF6)
-val primaryContentColor = Color.White
-val textColor = Color(0xFF1F1F1F)
-val subtextColor = Color.Gray
+
 
 @Composable
 fun SettingsSection(
@@ -40,8 +36,8 @@ fun SettingsSection(
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(secondaryColor)
-            .padding(vertical = 16.dp),
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(vertical = 12.dp),
     ) {
         content()
     }
@@ -51,10 +47,9 @@ fun SettingsSection(
 fun SectionHeader(title: String) {
     Text(
         text = title,
-        color = subtextColor,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 12.sp,
-        modifier = Modifier.padding(horizontal = 16.dp)
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
     )
 }
 
@@ -66,14 +61,14 @@ fun CreativeAppInfoCard() {
         modifier = Modifier
             .fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = secondaryColor),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                    .background(primaryColor)
+                    .background(MaterialTheme.colorScheme.primary)
                     .padding(20.dp)
             ) {
                 Row(
@@ -83,20 +78,19 @@ fun CreativeAppInfoCard() {
                     Icon(
                         imageVector = Icons.Filled.Info,
                         contentDescription = "App Logo",
-                        tint = primaryContentColor,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(56.dp)
                     )
                     Column {
                         Text(
                             text = "ANS NT App",
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = primaryContentColor
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                         Text(
                             text = "Wersja 1.0.0",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = primaryContentColor.copy(alpha = 0.8f)
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -118,19 +112,18 @@ fun CreativeAppInfoCard() {
                 Icon(
                     imageVector = Icons.Default.Lock,
                     contentDescription = "Polityka Prywatności",
-                    tint = primaryColor
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     text = "Polityka prywatności",
-                    fontWeight = FontWeight.SemiBold,
-                    color = textColor,
+                    style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f)
                 )
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = subtextColor
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
         }
@@ -150,12 +143,12 @@ private fun InfoDetailRow(icon: ImageVector, label: String, value: String) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = primaryColor,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(24.dp)
         )
         Column {
-            Text(text = label, style = MaterialTheme.typography.bodySmall, color = subtextColor)
-            Text(text = value, style = MaterialTheme.typography.bodyMedium, color = textColor, fontWeight = FontWeight.SemiBold)
+            Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+            Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
         }
     }
 }
@@ -174,13 +167,13 @@ fun SettingsToggleRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = title, color = textColor, fontSize = 16.sp)
+        Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = primaryColor,
+                checkedTrackColor = MaterialTheme.colorScheme.primary,
                 uncheckedThumbColor = Color.White,
                 uncheckedTrackColor = Color.LightGray
             )
@@ -203,21 +196,26 @@ fun SettingsClickableRow(
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = title, color = textColor, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.width(16.dp))
         if (value != null) {
-            Text(text = value, color = primaryColor, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
         }
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = "Navigate",
-            tint = subtextColor
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
     }
 }
 
 @Composable
-fun ProfileHeader(fullName: String, albumNumber: String, deanGroups: List<String>) {
+fun ProfileHeader(
+    fullName: String,
+    albumNumber: String,
+    deanGroups: List<String>,
+    onNavigateToGroupSelection: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -230,44 +228,24 @@ fun ProfileHeader(fullName: String, albumNumber: String, deanGroups: List<String
             modifier = Modifier
                 .size(96.dp)
                 .clip(CircleShape)
-                .background(secondaryColor),
+                .background(MaterialTheme.colorScheme.tertiaryContainer),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.Person,
                 contentDescription = "Avatar",
-                tint = primaryColor,
+                tint = MaterialTheme.colorScheme.onSecondary,
                 modifier = Modifier.size(56.dp)
             )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // Imię i nazwisko
-        Text(
-            text = fullName,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = textColor,
-            fontFamily = interFontFamily
-        )
-
-        // Numer albumu
-        Text(
-            text = "Nr albumu: $albumNumber",
-            fontSize = 16.sp,
-            color = subtextColor,
-            fontFamily = interFontFamily
-        )
-
-        // Grupy dziekańskie
-        Text(
-            text = "Grupy: ${deanGroups.joinToString(", ")}",
-            fontSize = 14.sp,
-            color = subtextColor,
-            fontFamily = interFontFamily,
-            textAlign = TextAlign.Center
-        )
+        Text(fullName, style = MaterialTheme.typography.titleLarge)
+        Text("Nr albumu: $albumNumber", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+        Text("Obserwowane grupy: ${deanGroups.joinToString(", ")}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), textAlign = TextAlign.Center)
+        Button(onClick = onNavigateToGroupSelection) {
+            Text("Zarządzaj grupami", style = MaterialTheme.typography.labelMedium)
+        }
     }
 }
 
@@ -282,20 +260,15 @@ fun SettingsOptionPickerDialog(
     AlertDialog(
         onDismissRequest = onDismissRequest,
         shape = RoundedCornerShape(20.dp),
-        containerColor = secondaryColor,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = {
-            Text(
-                text = title,
-                fontWeight = FontWeight.Bold,
-                fontFamily = interFontFamily,
-                color = primaryColor
-            )
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         },
         text = {
             Column(Modifier.selectableGroup()) {
                 options.forEach { option ->
                     val isSelected = option == selectedOption
-                    val rowBackgroundColor = if (isSelected) primaryColor.copy(alpha = 0.1f) else Color.Transparent
+                    val rowBackgroundColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -312,14 +285,9 @@ fun SettingsOptionPickerDialog(
                         RadioButton(
                             selected = isSelected,
                             onClick = null,
-                            colors = RadioButtonDefaults.colors(selectedColor = primaryColor)
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
                         )
-                        Text(
-                            text = option,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontFamily = interFontFamily,
-                            modifier = Modifier.padding(start = 16.dp)
-                        )
+                        Text(option, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 16.dp))
                     }
                 }
             }
@@ -327,9 +295,9 @@ fun SettingsOptionPickerDialog(
         confirmButton = {
             TextButton(
                 onClick = onDismissRequest,
-                colors = ButtonDefaults.textButtonColors(contentColor = primaryColor)
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("GOTOWE", fontWeight = FontWeight.Bold, fontFamily = interFontFamily)
+                Text("GOTOWE", style = MaterialTheme.typography.labelLarge)
             }
         }
     )

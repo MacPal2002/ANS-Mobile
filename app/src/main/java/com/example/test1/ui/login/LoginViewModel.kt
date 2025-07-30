@@ -36,7 +36,7 @@ class LoginViewModel : ViewModel() {
     }
 
 
-    private fun saveDeviceData(context: Context) {
+    private fun saveDeviceData() {
         val userId = auth.currentUser?.uid ?: return
 
         // ZMIANA: Użyj Firebase Installation ID zamiast ANDROID_ID
@@ -95,7 +95,7 @@ class LoginViewModel : ViewModel() {
                         val email = document.getString("email")
                         if (email != null) {
                             // Mamy email, przechodzimy do etapu 2: logowanie w Firebase Auth
-                            signInToFirebaseAuth(email, password, context)
+                            signInToFirebaseAuth(email, password)
                         } else {
                             // Sytuacja awaryjna: znaleziono studenta, ale nie ma zapisanego emaila
                             _uiState.update { it.copy(status = LoginStatus.ERROR, genericError = "Błąd danych użytkownika. Skontaktuj się z administratorem.") }
@@ -112,10 +112,10 @@ class LoginViewModel : ViewModel() {
         }
     }
 
-    private fun signInToFirebaseAuth(email: String, password: String, context: Context) {
+    private fun signInToFirebaseAuth(email: String, password: String) {
         auth.signInWithEmailAndPassword(email, password)
             .addOnSuccessListener {
-                saveDeviceData(context)
+                saveDeviceData()
 
                 // Aktualizujemy stan UI, aby przejść dalej
                 _uiState.update { it.copy(status = LoginStatus.SUCCESS) }

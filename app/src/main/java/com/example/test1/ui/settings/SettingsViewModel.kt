@@ -1,6 +1,5 @@
 package com.example.test1.ui.settings
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.test1.ui.schedule.ScheduleRepository
@@ -15,14 +14,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import android.provider.Settings.Secure
-import android.app.Application
 import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.installations.installations
 
 class SettingsViewModel(
-    private val application: Application,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 

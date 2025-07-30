@@ -46,7 +46,6 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit
 ) {
-
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
 
     // Pobieramy stan z ViewModelu i obserwujemy jego zmiany
@@ -172,7 +171,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
-                    onClick = { loginViewModel.login() },
+                    onClick = { loginViewModel.login(context) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),

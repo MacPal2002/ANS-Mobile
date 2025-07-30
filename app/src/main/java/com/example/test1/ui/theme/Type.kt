@@ -21,27 +21,27 @@ val latoFontFamily = FontFamily(
 // Set of Material typography styles to start with
 val Typography = Typography(
     bodyLarge = TextStyle(
-        fontFamily = latoFontFamily, // Zmiana
+        fontFamily = latoFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp
     ),
     bodyMedium = TextStyle(
-        fontFamily = latoFontFamily, // Zmiana
+        fontFamily = latoFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp
     ),
     bodySmall = TextStyle(
-        fontFamily = latoFontFamily, // Zmiana
+        fontFamily = latoFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp
     ),
     titleLarge = TextStyle(
-        fontFamily = montserratFontFamily, // Pozostaje bez zmian
+        fontFamily = montserratFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 24.sp
     ),
     titleMedium = TextStyle(
-        fontFamily = latoFontFamily, // Zmiana
+        fontFamily = latoFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp
     ),
@@ -51,7 +51,7 @@ val Typography = Typography(
         fontSize = 14.sp
     ),
     labelLarge = TextStyle(
-        fontFamily = latoFontFamily, // Zmiana
+        fontFamily = latoFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 16.sp
     ),

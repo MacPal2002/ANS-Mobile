@@ -85,6 +85,7 @@ import java.time.format.TextStyle
 import java.util.Locale
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextFieldDefaults
+import com.example.test1.data.ObservedGroup
 
 data class ScheduleEvent(
     val title: String,

@@ -1,9 +1,10 @@
 package com.example.test1.ui.schedule
 
+import com.example.test1.data.ObservedGroup
 import com.example.test1.data.ScheduleItem
 import java.time.LocalDate
 
-data class ObservedGroup(val id: Int, val name: String)
+
 
 data class ScheduleState(
     val selectedDate: LocalDate = LocalDate.now(),

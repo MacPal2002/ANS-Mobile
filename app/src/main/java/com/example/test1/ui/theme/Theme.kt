@@ -86,7 +86,7 @@ fun AppTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // Ustawiamy pasek na przezroczysty, bo używasz enableEdgeToEdge
+            // Ustawiamy pasek na przezroczysty
             window.statusBarColor = Color.Transparent.toArgb()
             // Ta linia kontroluje, czy ikony na pasku (zegar, bateria) są ciemne czy jasne
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme

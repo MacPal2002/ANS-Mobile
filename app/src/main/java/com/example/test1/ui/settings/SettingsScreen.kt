@@ -4,6 +4,12 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 //noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.TextButton
 import androidx.compose.material.icons.Icons
@@ -14,14 +20,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.test1.ui.component.AppTopBar
-import androidx.lifecycle.viewmodel.compose.viewModel
 
 
 val destructiveColor = Color(0xFFD32F2F)/**/
+
+private fun checkNotificationPermission(context: Context): Boolean {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+}
 
 @Composable
 fun SettingsScreen(
@@ -72,6 +91,36 @@ fun SettingsScreen(
         )
     }
 
+    var hasNotificationPermission by remember {
+        mutableStateOf(checkNotificationPermission(context))
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasNotificationPermission = checkNotificationPermission(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted: Boolean ->
+            if (isGranted) {
+                viewModel.onNotificationsToggle(true)
+            } else {
+                Toast.makeText(context, "Nie przyznano uprawnień", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+
+    val isToggleChecked = uiState.notificationsEnabled && hasNotificationPermission
+
     Scaffold(
         topBar = {
             AppTopBar(
@@ -118,8 +167,29 @@ fun SettingsScreen(
                             SectionHeader(title = "POWIADOMIENIA O ZAJĘCIACH")
                             SettingsToggleRow(
                                 title = "Wysyłaj powiadomienia",
-                                checked = uiState.notificationsEnabled,
-                                onCheckedChange = viewModel::onNotificationsToggle
+                                checked = isToggleChecked,
+                                onCheckedChange = { isChecked ->
+                                    if (isChecked) {
+                                        // Użytkownik chce WŁĄCZYĆ powiadomienia
+                                        // Sprawdzamy wersję Androida, bo prośba jest potrzebna od API 33 (Android 13)
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            // Sprawdzamy, czy mamy już uprawnienia
+                                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                                                // Mamy uprawnienia, po prostu włączamy
+                                                viewModel.onNotificationsToggle(true)
+                                            } else {
+                                                // Nie mamy uprawnień, prosimy o nie
+                                                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                            }
+                                        } else {
+                                            // Na starszych wersjach Androida nie trzeba pytać, po prostu włączamy
+                                            viewModel.onNotificationsToggle(true)
+                                        }
+                                    } else {
+                                        // Użytkownik chce WYŁĄCZYĆ powiadomienia
+                                        viewModel.onNotificationsToggle(false)
+                                    }
+                                }
                             )
                             SettingsClickableRow(
                                 title = "Wyprzedzenie",

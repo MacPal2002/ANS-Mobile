@@ -9,76 +9,123 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.Job
 
 
 class ScheduleViewModel : ViewModel() {
-    private val repository = ScheduleRepository()
 
-    // Prywatny, modyfikowalny stan
     private val _uiState = MutableStateFlow(ScheduleState())
-    // Publiczny, niemodyfikowalny stan dla widoku
     val uiState: StateFlow<ScheduleState> = _uiState.asStateFlow()
 
-    init {
-        loadInitialData()
+    private val auth = Firebase.auth
+    private val repository = ScheduleRepository()
+
+    // KROK 1: Dodajemy pole do przechowywania naszego zadania nasłuchującego
+    private var groupsListenerJob: Job? = null
+
+    private val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+        if (firebaseAuth.currentUser != null) {
+            listenForObservedGroupsChanges()
+        } else {
+            // KROK 3: Anulujemy nasłuchiwanie PRZED zresetowaniem stanu
+            groupsListenerJob?.cancel()
+            _uiState.update { ScheduleState() }
+        }
     }
 
-    private fun loadInitialData() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+    init {
+        auth.addAuthStateListener(authStateListener)
+    }
 
-            // 1. Pobierz ID obserwowanych grup
-            repository.getObservedGroupIds().onSuccess { ids ->
-                if (ids.isEmpty()) {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Nie obserwujesz żadnych grup.\nPrzejdź do ustawień") }
-                    return@launch
-                }
-
-                // 2. Pobierz szczegóły (nazwy) tych grup
-                repository.getGroupDetails(ids).onSuccess { groups ->
-                    val firstGroupId = groups.firstOrNull()?.id
-                    _uiState.update { it.copy(observedGroups = groups, selectedGroupId = firstGroupId) }
-
-                    // 3. Pobierz plan dla pierwszej grupy
-                    if (firstGroupId != null) {
-                        fetchScheduleForDate(firstGroupId, _uiState.value.selectedDate)
+    /**
+     * Nasłuchuje na zmiany w obserwowanych grupach. Jest to główne źródło danych o grupach.
+     * Wywoływana po zalogowaniu i reaguje na każdą zmianę w Firestore.
+     */
+    private fun listenForObservedGroupsChanges() {
+        // Anuluj poprzednie nasłuchiwanie, jeśli jakieś było aktywne
+        groupsListenerJob?.cancel()
+        // KROK 2: Zapisujemy nowe zadanie nasłuchiwania do naszego pola
+        groupsListenerJob = viewModelScope.launch {
+            repository.getObservedGroupsFlow().collect { result ->
+                result.onSuccess { groups ->
+                    val currentSelectedId = _uiState.value.selectedGroupId
+                    val newSelectedId = if (groups.any { it.id == currentSelectedId }) {
+                        currentSelectedId
                     } else {
-                        _uiState.update { it.copy(isLoading = false) }
+                        groups.firstOrNull()?.id
                     }
+
+                    _uiState.update {
+                        it.copy(
+                            observedGroups = groups,
+                            selectedGroupId = newSelectedId
+                        )
+                    }
+                    fetchScheduleForCurrentState()
                 }.onFailure { error ->
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Błąd pobierania nazw grup: ${error.message}") }
+                    _uiState.update { it.copy(isLoading = false, errorMessage = error.message) }
                 }
-            }.onFailure { error ->
-                _uiState.update { it.copy(isLoading = false, errorMessage = "Błąd pobierania obserwowanych grup: ${error.message}") }
             }
         }
     }
 
+    /**
+     * Publiczna funkcja wywoływana z UI po zmianie daty.
+     */
     fun onDateSelected(newDate: LocalDate) {
         _uiState.update { it.copy(selectedDate = newDate) }
-        val groupId = _uiState.value.selectedGroupId
-        if (groupId != null) {
-            fetchScheduleForDate(groupId, newDate)
-        }
+        fetchScheduleForCurrentState()
     }
 
-    // Obsługuje wybór innej grupy z listy
+    /**
+     * Publiczna funkcja wywoływana z UI po zmianie grupy w dropdownie.
+     */
     fun onGroupSelected(groupId: Int) {
         _uiState.update { it.copy(selectedGroupId = groupId) }
-        fetchScheduleForDate(groupId, _uiState.value.selectedDate)
+        fetchScheduleForCurrentState()
     }
 
-    private fun fetchScheduleForDate(groupId: Int, date: LocalDate) {
+    /**
+     * Centralna funkcja do pobierania planu. Używa aktualnych wartości
+     * `selectedGroupId` i `selectedDate` ze stanu.
+     */
+    private fun fetchScheduleForCurrentState() {
+        val state = _uiState.value
+        val groupId = state.selectedGroupId
+
+        if (groupId == null) {
+            // Obsługa sytuacji, gdy nie ma wybranej żadnej grupy (np. użytkownik nie obserwuje żadnej)
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    events = emptyList(),
+                    errorMessage = if (it.observedGroups.isEmpty()) "Nie obserwujesz żadnych grup.\nPrzejdź do ustawień." else "Wybierz grupę."
+                )
+            }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-
-            val result = repository.getDailySchedule(groupId, date)
-
+            // Zakładam, że Twoje repozytorium ma taką funkcję
+            val result = repository.getDailySchedule(groupId, state.selectedDate)
             result.onSuccess { newEvents ->
                 _uiState.update { it.copy(isLoading = false, events = newEvents) }
             }.onFailure { error ->
                 _uiState.update { it.copy(isLoading = false, errorMessage = "Błąd: ${error.message}") }
             }
         }
+    }
+
+    /**
+     * Ważne: Zawsze usuwaj listenery, aby uniknąć wycieków pamięci.
+     */
+    override fun onCleared() {
+        super.onCleared()
+        auth.removeAuthStateListener(authStateListener)
+        groupsListenerJob?.cancel()
     }
 }

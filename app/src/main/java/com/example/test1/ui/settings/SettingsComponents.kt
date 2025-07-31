@@ -20,13 +20,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import com.example.test1.R
 
 
 @Composable
@@ -57,6 +58,15 @@ fun SectionHeader(title: String) {
 @Preview
 @Composable
 fun CreativeAppInfoCard() {
+    val context = LocalContext.current
+    val appName = context.getString(R.string.app_name)
+
+    val versionName = try {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName
+    } catch (e: Exception) {
+        "1.0.0" // Wartość zapasowa w razie błędu
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth(),
@@ -83,12 +93,12 @@ fun CreativeAppInfoCard() {
                     )
                     Column {
                         Text(
-                            text = "ANS NT App",
+                            text = appName,
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                         Text(
-                            text = "Wersja 1.0.0",
+                            text = "Wersja $versionName",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                         )

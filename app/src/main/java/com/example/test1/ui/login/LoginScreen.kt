@@ -118,7 +118,7 @@ fun LoginScreen(
                     },
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 OutlinedTextField(
                     value = uiState.password,
@@ -194,7 +194,7 @@ fun LoginScreen(
                         append("Nie masz konta? ")
                     }
                     pushStringAnnotation("REGISTER", "register")
-                    withStyle(style = MaterialTheme.typography.labelLarge.toSpanStyle().copy(
+                    withStyle(style = MaterialTheme.typography.labelMedium.toSpanStyle().copy(
                         color = MaterialTheme.colorScheme.primary)
                     ) {
                         append("Zarejestruj się")

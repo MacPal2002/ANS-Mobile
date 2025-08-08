@@ -114,7 +114,7 @@ fun RegisterScreen(
                     append("Masz już konto? ")
                 }
                 pushStringAnnotation("LOGIN", "login")
-                withStyle(style = MaterialTheme.typography.labelLarge.toSpanStyle().copy(
+                withStyle(style = MaterialTheme.typography.labelMedium.toSpanStyle().copy(
                     color = MaterialTheme.colorScheme.primary)
                 ) {
                     append("Zaloguj się")
@@ -223,7 +223,7 @@ fun Step1Form(
                 cursorColor = MaterialTheme.colorScheme.primary
             )
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
         OutlinedTextField(
             value = state.email,
             onValueChange = onEmailChange,
@@ -248,7 +248,7 @@ fun Step1Form(
                 cursorColor = MaterialTheme.colorScheme.primary
             )
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
         OutlinedTextField(
             value = state.password,
             onValueChange = onPasswordChange,
@@ -277,7 +277,7 @@ fun Step1Form(
                 cursorColor = MaterialTheme.colorScheme.primary
             )
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
         OutlinedTextField(
             value = state.confirmPassword,
             onValueChange = onConfirmPasswordChange,

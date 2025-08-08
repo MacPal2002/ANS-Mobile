@@ -231,7 +231,6 @@ fun ProfileHeader(
             .fillMaxWidth()
             .padding(top = 32.dp), // Odstęp od TopBar
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Okrągły awatar
         Box(
@@ -249,10 +248,12 @@ fun ProfileHeader(
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Text(fullName, style = MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(16.dp))
         Text("Nr albumu: $albumNumber", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
         Text("Obserwowane grupy: ${deanGroups.joinToString(", ")}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), textAlign = TextAlign.Center)
+        Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onNavigateToGroupSelection) {
             Text("Zarządzaj grupami", style = MaterialTheme.typography.labelMedium)
         }

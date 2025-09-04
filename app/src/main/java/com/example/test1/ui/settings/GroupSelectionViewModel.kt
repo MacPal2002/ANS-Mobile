@@ -1,8 +1,11 @@
 package com.example.test1.ui.settings
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import com.example.test1.data.GroupNode
 import androidx.lifecycle.viewModelScope
+import com.example.test1.data.local.AppDatabase
 import com.example.test1.ui.schedule.ScheduleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,8 +20,10 @@ data class GroupSelectionState(
     val selectedGroupIds: Set<Int> = emptySet()
 )
 
-class GroupSelectionViewModel : ViewModel() {
-    private val repository = ScheduleRepository()
+class GroupSelectionViewModel(application: Application) : AndroidViewModel(application) {
+    private val db = AppDatabase.getInstance(application)
+    private val scheduleDao = db.scheduleDao()
+    private val repository = ScheduleRepository(scheduleDao)
     private val _uiState = MutableStateFlow(GroupSelectionState())
     val uiState: StateFlow<GroupSelectionState> = _uiState.asStateFlow()
 

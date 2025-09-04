@@ -32,14 +32,28 @@
   <init>(...);
 }
 
-# --- Twoje klasy danych i stanu (NAJWAŻNIEJSZE) ---
+# --- Hilt (Wstrzykiwanie Zależności) ---
+# Chroni klasy generowane przez Hilt.
+#-keep class * implements dagger.hilt.internal.GeneratedComponent { *; }
+#-keep class * implements dagger.hilt.internal.GeneratedEntryPoint { *; }
+#-keep class dagger.hilt.internal.processedrootsentinel.codegen.*
+#-keep class dagger.hilt.android.internal.managers.*
+#-keep class dagger.hilt.android.internal.modules.ApplicationContextModule
+
+# --- Gson / Room Type Converters ---
+# BARDZO WAŻNE: Zapobiega awarii aplikacji przy deserializacji obiektów z JSON,
+# zwłaszcza przy użyciu TypeToken w TypeConverterach.
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken { *; }
+
+
+# ---  Klasy danych i stanu ---
 # Chroni modele danych (do Firestore) i klasy stanu (do UI) przed zmianą nazw,
 # co zapobiega błędom przy serializacji i odczycie danych z bazy.
+# Ta reguła jest bezpieczna i obejmuje wszystkie klasy w pakiecie 'data'.
 -keep class com.example.test1.data.** { *; }
--keep class com.example.test1.ui.login.LoginState { *; }
--keep class com.example.test1.ui.register.RegisterState { *; }
--keep class com.example.test1.ui.schedule.ScheduleState { *; }
--keep class com.example.test1.ui.settings.SettingsState { *; }
+# używamy wzorca, który dopasuje wszystkie klasy kończące się na "State".
+-keep class com.example.test1.ui.**.*State { *; }
 
 
 # --- Usuwanie logów z wersji produkcyjnej ---

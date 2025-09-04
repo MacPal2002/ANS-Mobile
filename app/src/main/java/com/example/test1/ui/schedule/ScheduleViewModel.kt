@@ -1,8 +1,10 @@
 package com.example.test1.ui.schedule
 
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.test1.data.local.AppDatabase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,13 +17,16 @@ import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.Job
 
 
-class ScheduleViewModel : ViewModel() {
+
+class ScheduleViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(ScheduleState())
     val uiState: StateFlow<ScheduleState> = _uiState.asStateFlow()
 
     private val auth = Firebase.auth
-    private val repository = ScheduleRepository()
+    private val db = AppDatabase.getInstance(application)
+    private val scheduleDao = db.scheduleDao()
+    private val repository = ScheduleRepository(scheduleDao = scheduleDao)
 
     // KROK 1: Dodajemy pole do przechowywania naszego zadania nasłuchującego
     private var groupsListenerJob: Job? = null

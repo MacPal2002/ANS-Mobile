@@ -18,12 +18,16 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
+import com.example.test1.data.local.ScheduleDao
 
-class ScheduleRepository {
+class ScheduleRepository(
+    private val scheduleDao: ScheduleDao
+) {
     private val functions = Firebase.functions("europe-central2")
     private val firestore = Firebase.firestore
     private val auth = Firebase.auth
-    private val db = Firebase.firestore
+
+
 
     // NOWA, REAKTYWNA FUNKCJA - NASZE GŁÓWNE NARZĘDZIE
     fun getObservedGroupsFlow(): Flow<Result<List<ObservedGroup>>> = callbackFlow {
@@ -34,7 +38,7 @@ class ScheduleRepository {
             return@callbackFlow
         }
 
-        val listenerRegistration = db.collection("students").document(userId)
+        val listenerRegistration = firestore.collection("students").document(userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("DEBUG", "Listener error: ", error) // LOG BŁĘDU
@@ -92,7 +96,7 @@ class ScheduleRepository {
             // ZMIANA #1: Szukamy w poprawnej kolekcji -> "groupDetails"
             // ZMIANA #2: Używamy FieldPath.documentId(), aby szukać po ID DOKUMENTU, a nie polu w środku.
             //            Musimy też zamienić listę liczb (Int) na listę tekstów (String), bo ID dokumentów to tekst.
-            val documents = db.collection("groupDetails")
+            val documents = firestore.collection("groupDetails")
                 .whereIn(FieldPath.documentId(), groupIds.map { it.toString() })
                 .get()
                 .await()
@@ -185,37 +189,57 @@ class ScheduleRepository {
 
 
     suspend fun getDailySchedule(groupId: Int, date: LocalDate): Result<List<ScheduleItem>> {
-        val dateString = date.format(DateTimeFormatter.ISO_LOCAL_DATE) // Format "YYYY-MM-DD"
+        // 1. Spróbuj pobrać dane z lokalnej bazy (cache)
+        val cachedSchedule = scheduleDao.getScheduleByGroupAndDate(groupId, date)
+
+        // 2. Spróbuj pobrać dane z sieci
+        return try {
+            val remoteSchedule = fetchFromFirebase(groupId, date)
+
+            scheduleDao.deleteScheduleByGroupAndDate(groupId, date)
+            scheduleDao.insertSchedule(remoteSchedule)
+
+            // Zwróć świeże dane
+            Result.success(remoteSchedule)
+        } catch (e: Exception) {
+            // Sprawdzamy, czy to błąd sieciowy
+            val isNetworkError = e is FirebaseFunctionsException &&
+                    (e.code == FirebaseFunctionsException.Code.UNAVAILABLE || e.code == FirebaseFunctionsException.Code.INTERNAL)
+
+            if (isNetworkError && cachedSchedule.isNotEmpty()) {
+                // 4. Błąd sieci, ale mamy dane w cache - zwracamy je
+                // Możesz opakować to w specjalny typ Result, by UI wiedział, że dane są nieaktualne
+                println("Network error, serving data from cache.")
+                Result.success(cachedSchedule)
+            } else {
+                // 5. Inny błąd LUB błąd sieci bez danych w cache - zwracamy błąd
+                val errorMessage = if (isNetworkError) {
+                    "Brak połączenia z internetem i brak danych w pamięci podręcznej."
+                } else {
+                    e.message ?: "Wystąpił nieznany błąd."
+                }
+                Result.failure(Exception(errorMessage, e))
+            }
+        }
+    }
+    private suspend fun fetchFromFirebase(groupId: Int, date: LocalDate): List<ScheduleItem> {
+        val dateString = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
         val data = hashMapOf(
             "groupId" to groupId,
             "dateString" to dateString
         )
 
-        return try {
-            val result = functions
-                .getHttpsCallable("getDailySchedule")
-                .call(data)
-                .await()
+        val result = functions
+            .getHttpsCallable("getDailySchedule")
+            .call(data)
+            .await()
 
-            // Parsowanie wyniku
-            val scheduleData = (result.data as? Map<*, *>)?.get("schedule") as? List<Map<String, Any>>
-            val scheduleItems = scheduleData?.map { mapToScheduleItem(it) } ?: emptyList()
-
-            Result.success(scheduleItems)
-        } catch (e: Exception) {
-            if (e is FirebaseFunctionsException &&
-                (e.code == FirebaseFunctionsException.Code.UNAVAILABLE || e.code == FirebaseFunctionsException.Code.INTERNAL)) {
-
-                Result.failure(Exception("Brak połączenia z internetem. Sprawdź sieć i spróbuj ponownie."))
-            } else {
-                // Dla wszystkich innych błędów, zwracamy oryginalny komunikat
-                Result.failure(e)
-            }
-        }
+        val scheduleData = (result.data as? Map<*, *>)?.get("schedule") as? List<Map<String, Any>>
+        return scheduleData?.map { mapToScheduleItem(it, groupId, date) } ?: emptyList()
     }
 
     // Funkcja do mapowania surowych danych z Firebase na model
-    private fun mapToScheduleItem(data: Map<String, Any>): ScheduleItem {
+    private fun mapToScheduleItem(data: Map<String, Any>, groupId: Int, date: LocalDate): ScheduleItem {
         val startTimeMap = data["startTime"] as? Map<String, Number> ?: emptyMap()
         val endTimeMap = data["endTime"] as? Map<String, Number> ?: emptyMap()
 
@@ -230,6 +254,8 @@ class ScheduleRepository {
         )
 
         return ScheduleItem(
+            groupId = groupId,
+            date = date,
             subjectFullName = data["subjectFullName"] as? String ?: "Brak nazwy",
             classType = data["classType"] as? String,
             startTime = startTime,

@@ -1,4 +1,4 @@
-package com.example.test1.utils
+package com.example.test1.util
 
 import android.Manifest
 import android.content.Context

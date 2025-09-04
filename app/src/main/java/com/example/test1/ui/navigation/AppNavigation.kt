@@ -10,15 +10,14 @@ import com.example.test1.ui.settings.SettingsScreen
 import com.example.test1.ui.register.RegisterScreen
 import com.example.test1.ui.schedule.ScheduleScreen
 import com.example.test1.ui.login.LoginScreen
-import com.example.test1.ui.settings.GroupSelectionScreen
-import com.example.test1.ui.settings.SettingsViewModel
+import com.example.test1.ui.settings.groupSelection.GroupSelectionScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
 
 @Composable
-fun AppNavigation(settingsViewModel: SettingsViewModel) {
+fun AppNavigation() {
     val navController = rememberNavController()
     val firebaseAuth = remember { Firebase.auth }
 
@@ -90,7 +89,6 @@ fun AppNavigation(settingsViewModel: SettingsViewModel) {
         // Definicja ekranu rejestracji
         composable("settings") {
             SettingsScreen(
-                viewModel = settingsViewModel,
                 onLogout = {
                     // Po wylogowaniu, wróć do ekranu logowania
                     navController.navigate("login") {

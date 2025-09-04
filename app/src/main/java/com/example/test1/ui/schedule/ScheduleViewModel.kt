@@ -3,8 +3,10 @@ package com.example.test1.ui.schedule
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.test1.data.local.AppDatabase
+import com.example.test1.data.repository.ScheduleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,19 +16,20 @@ import java.time.LocalDate
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import javax.inject.Inject
 
 
-
-class ScheduleViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class ScheduleViewModel @Inject constructor(
+    private val repository: ScheduleRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ScheduleState())
     val uiState: StateFlow<ScheduleState> = _uiState.asStateFlow()
 
     private val auth = Firebase.auth
-    private val db = AppDatabase.getInstance(application)
-    private val scheduleDao = db.scheduleDao()
-    private val repository = ScheduleRepository(scheduleDao = scheduleDao)
 
     // KROK 1: Dodajemy pole do przechowywania naszego zadania nasłuchującego
     private var groupsListenerJob: Job? = null
@@ -102,7 +105,6 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         val groupId = state.selectedGroupId
 
         if (groupId == null) {
-            // Obsługa sytuacji, gdy nie ma wybranej żadnej grupy (np. użytkownik nie obserwuje żadnej)
             _uiState.update {
                 it.copy(
                     isLoading = false,
@@ -115,13 +117,29 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            // Zakładam, że Twoje repozytorium ma taką funkcję
-            val result = repository.getDailySchedule(groupId, state.selectedDate)
-            result.onSuccess { newEvents ->
-                _uiState.update { it.copy(isLoading = false, events = newEvents) }
-            }.onFailure { error ->
-                _uiState.update { it.copy(isLoading = false, errorMessage = "Błąd: ${error.message}") }
-            }
+
+            repository.getDailySchedule(groupId, state.selectedDate)
+                .collect { result ->
+                    result.onSuccess { scheduleItems ->
+                        // Sukces: aktualizujemy plan i czyścimy ewentualny stary błąd
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                events = scheduleItems,
+                                errorMessage = null
+                            )
+                        }
+                    }.onFailure { error ->
+                        // BŁĄD SIECI: Aktualizujemy TYLKO błąd i stan ładowania.
+                        // Lista 'events' pozostaje nietknięta, dzięki czemu dane z cache są nadal widoczne.
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = error.message ?: "Wystąpił nieznany błąd sieci."
+                            )
+                        }
+                    }
+                }
         }
     }
 

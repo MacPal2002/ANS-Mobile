@@ -1,15 +1,11 @@
-package com.example.test1.ui.schedule
+package com.example.test1.data.repository
 
 import android.util.Log
 import com.example.test1.data.GroupNode
 import com.example.test1.data.ObservedGroup
-import com.example.test1.data.ScheduleItem
+import com.example.test1.data.local.ScheduleItem
 import com.google.firebase.Timestamp
-import com.google.firebase.functions.ktx.functions
-import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FieldPath
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import com.google.firebase.functions.FirebaseFunctionsException
@@ -18,16 +14,21 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
-import com.example.test1.data.local.ScheduleDao
+import com.example.test1.data.local.ScheduleItemDao
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.FirebaseFunctions
+import kotlinx.coroutines.flow.flow
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class ScheduleRepository(
-    private val scheduleDao: ScheduleDao
+@Singleton
+class ScheduleRepository @Inject constructor(
+    private val scheduleDao: ScheduleItemDao,
+    private val functions: FirebaseFunctions,
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth
 ) {
-    private val functions = Firebase.functions("europe-central2")
-    private val firestore = Firebase.firestore
-    private val auth = Firebase.auth
-
-
 
     // NOWA, REAKTYWNA FUNKCJA - NASZE GŁÓWNE NARZĘDZIE
     fun getObservedGroupsFlow(): Flow<Result<List<ObservedGroup>>> = callbackFlow {
@@ -188,40 +189,42 @@ class ScheduleRepository(
     }
 
 
-    suspend fun getDailySchedule(groupId: Int, date: LocalDate): Result<List<ScheduleItem>> {
-        // 1. Spróbuj pobrać dane z lokalnej bazy (cache)
+    /**
+     * Pobiera dzienny plan zajęć w sposób reaktywny.
+     * Zwraca Flow, który najpierw emituje dane z cache, a następnie próbuje
+     * pobrać świeże dane z sieci, zaktualizować cache i wyemitować nową listę.
+     */
+    fun getDailySchedule(groupId: Int, date: LocalDate): Flow<Result<List<ScheduleItem>>> = flow {
+        // 1. Natychmiast emituj dane z lokalnej bazy (cache)
         val cachedSchedule = scheduleDao.getScheduleByGroupAndDate(groupId, date)
+        emit(Result.success(cachedSchedule))
 
-        // 2. Spróbuj pobrać dane z sieci
-        return try {
+        // 2. Spróbuj pobrać świeże dane z sieci w tle
+        try {
             val remoteSchedule = fetchFromFirebase(groupId, date)
 
+            // 3. Zaktualizuj bazę danych
             scheduleDao.deleteScheduleByGroupAndDate(groupId, date)
             scheduleDao.insertSchedule(remoteSchedule)
 
-            // Zwróć świeże dane
-            Result.success(remoteSchedule)
+            // 4. Pobierz nowe dane z bazy (jedyne źródło prawdy) i wyemituj je ponownie
+            val newScheduleFromDb = scheduleDao.getScheduleByGroupAndDate(groupId, date)
+            emit(Result.success(newScheduleFromDb))
         } catch (e: Exception) {
-            // Sprawdzamy, czy to błąd sieciowy
-            val isNetworkError = e is FirebaseFunctionsException &&
-                    (e.code == FirebaseFunctionsException.Code.UNAVAILABLE || e.code == FirebaseFunctionsException.Code.INTERNAL)
-
-            if (isNetworkError && cachedSchedule.isNotEmpty()) {
-                // 4. Błąd sieci, ale mamy dane w cache - zwracamy je
-                // Możesz opakować to w specjalny typ Result, by UI wiedział, że dane są nieaktualne
-                println("Network error, serving data from cache.")
-                Result.success(cachedSchedule)
-            } else {
-                // 5. Inny błąd LUB błąd sieci bez danych w cache - zwracamy błąd
-                val errorMessage = if (isNetworkError) {
-                    "Brak połączenia z internetem i brak danych w pamięci podręcznej."
-                } else {
-                    e.message ?: "Wystąpił nieznany błąd."
-                }
-                Result.failure(Exception(errorMessage, e))
-            }
+            // 5. W przypadku błędu sieci, wyemituj błąd.
+            // UI wciąż będzie miało ostatnie dane z cache, które dostało na początku.
+            Log.e(
+                "ScheduleRepo",
+                "Failed to fetch remote schedule. Exception type: ${e.javaClass.simpleName}, Message: ${e.message}",
+                e // Zostawiamy 'e', aby zobaczyć pełny stack trace
+            )
+            emit(handleFirebaseException(e))
         }
     }
+
+    /**
+     * Prywatna funkcja do pobierania danych bezpośrednio z Firebase Cloud Functions.
+     */
     private suspend fun fetchFromFirebase(groupId: Int, date: LocalDate): List<ScheduleItem> {
         val dateString = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
         val data = hashMapOf(
@@ -238,12 +241,13 @@ class ScheduleRepository(
         return scheduleData?.map { mapToScheduleItem(it, groupId, date) } ?: emptyList()
     }
 
-    // Funkcja do mapowania surowych danych z Firebase na model
+    /**
+     * Mapuje surowe dane (Map) z Firebase na obiekt encji ScheduleItem.
+     */
     private fun mapToScheduleItem(data: Map<String, Any>, groupId: Int, date: LocalDate): ScheduleItem {
         val startTimeMap = data["startTime"] as? Map<String, Number> ?: emptyMap()
         val endTimeMap = data["endTime"] as? Map<String, Number> ?: emptyMap()
 
-        // Bezpiecznie konwertujemy 'Number' na wymagany typ (.toLong() i .toInt())
         val startTime = Timestamp(
             startTimeMap["_seconds"]?.toLong() ?: 0L,
             startTimeMap["_nanoseconds"]?.toInt() ?: 0
@@ -263,5 +267,19 @@ class ScheduleRepository(
             lecturers = data["lecturers"] as? List<Map<String, Any>> ?: emptyList(),
             rooms = data["rooms"] as? List<Map<String, Any>> ?: emptyList()
         )
+    }
+
+    /**
+     * Centralna funkcja do obsługi błędów z Firebase.
+     * Tworzy czytelny komunikat dla użytkownika w przypadku problemów z siecią.
+     */
+    private fun <T> handleFirebaseException(e: Exception): Result<T> {
+        val finalException = if (e is FirebaseFunctionsException &&
+            (e.code == FirebaseFunctionsException.Code.UNAVAILABLE || e.code == FirebaseFunctionsException.Code.INTERNAL)) {
+            Exception("Brak połączenia z internetem. Sprawdź sieć i spróbuj ponownie.", e)
+        } else {
+            e
+        }
+        return Result.failure(finalException)
     }
 }

@@ -1,8 +1,9 @@
 package com.example.test1.ui.settings
 
 import android.app.Application
+import android.os.Build
 import androidx.lifecycle.viewModelScope
-import com.example.test1.ui.schedule.ScheduleRepository
+import com.example.test1.data.repository.ScheduleRepository
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
@@ -16,24 +17,28 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import com.example.test1.data.local.AppDatabase
+import com.example.test1.data.repository.SettingsRepository
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.installations.FirebaseInstallations
 import com.google.firebase.installations.installations
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class SettingsViewModel(
-    application: Application,
-    private val settingsRepository: SettingsRepository
-) : AndroidViewModel(application) {
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val settingsRepository: SettingsRepository,
+    private val scheduleRepository: ScheduleRepository,
+    private val auth: FirebaseAuth,
+    private val firestore: FirebaseFirestore,
+    private val installations: FirebaseInstallations
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsState())
     val uiState: StateFlow<SettingsState> = _uiState.asStateFlow()
 
-    private val auth = Firebase.auth
-    private val firestore = Firebase.firestore
-    private val db = AppDatabase.getInstance(application)
-    private val scheduleDao = db.scheduleDao()
-
-    private val scheduleRepository = ScheduleRepository(scheduleDao = scheduleDao)
     private var groupsListenerJob: Job? = null
 
     private val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
@@ -58,32 +63,32 @@ class SettingsViewModel(
             _uiState.update { it.copy(isLoading = true) }
             val userId = auth.currentUser?.uid ?: return@launch
 
-            // ZMIANA: Używamy Firebase Installations ID do odczytu
-            Firebase.installations.id.addOnSuccessListener { deviceId ->
-                viewModelScope.launch {
-                    try {
-                        val userDoc = firestore.collection("students").document(userId).get().await()
-                        if (userDoc.exists()) {
-                            val devicesMap = userDoc.get("devices") as? Map<String, Any>
-                            val deviceSettings = devicesMap?.get(deviceId) as? Map<String, Any>
+            try {
+                // Używamy JEDNEGO sposobu pobrania ID - await()
+                val deviceId = installations.id.await()
 
-                            val notificationsEnabled = deviceSettings?.get("notificationEnabled") as? Boolean ?: false
-                            val notificationTime = deviceSettings?.get("notificationTimeOption") as? String ?: "N/A"
+                val userDoc = firestore.collection("students").document(userId).get().await()
+                if (userDoc.exists()) {
+                    val devicesMap = userDoc.get("devices") as? Map<String, Any>
+                    val deviceSettings = devicesMap?.get(deviceId) as? Map<String, Any>
 
-                            _uiState.update {
-                                it.copy(
-                                    displayName = userDoc.getString("displayName") ?: "Brak nazwy",
-                                    albumNumber = userDoc.getString("albumNumber") ?: "Brak albumu",
-                                    notificationsEnabled = notificationsEnabled,
-                                    notificationTimeOption = notificationTime,
-                                    isLoading = false
-                                )
-                            }
-                        }
-                    } catch (e: Exception) {
-                        _uiState.update { it.copy(error = e.message, isLoading = false) }
+                    val notificationsEnabled = deviceSettings?.get("notificationEnabled") as? Boolean ?: false
+                    val notificationTime = deviceSettings?.get("notificationTimeOption") as? String ?: "N/A"
+
+                    _uiState.update {
+                        it.copy(
+                            displayName = userDoc.getString("displayName") ?: "Brak nazwy",
+                            albumNumber = userDoc.getString("albumNumber") ?: "Brak albumu",
+                            notificationsEnabled = notificationsEnabled,
+                            notificationTimeOption = notificationTime,
+                            isLoading = false
+                        )
                     }
+                } else {
+                    _uiState.update { it.copy(isLoading = false, error = "Nie znaleziono danych użytkownika.") }
                 }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message, isLoading = false) }
             }
         }
     }
@@ -114,12 +119,16 @@ class SettingsViewModel(
         }
     }
 
-    // NOWA FUNKCJA POMOCNICZA do aktualizacji ustawień per-urządzenie
     private fun updateDeviceSetting(key: String, value: Any) {
         val userId = auth.currentUser?.uid ?: return
-        Firebase.installations.id.addOnSuccessListener { deviceId ->
-            val settingPath = "devices.$deviceId.$key"
-            firestore.collection("students").document(userId).update(settingPath, value)
+        viewModelScope.launch {
+            try {
+                val deviceId = installations.id.await()
+                val settingPath = "devices.$deviceId.$key"
+                firestore.collection("students").document(userId).update(settingPath, value).await()
+            } catch (e: Exception) {
+                Log.w("SettingsVM", "Błąd podczas aktualizacji ustawienia '$key'", e)
+            }
         }
     }
 
@@ -134,42 +143,49 @@ class SettingsViewModel(
         _uiState.update { it.copy(notificationTimeOption = time) }
         updateDeviceSetting("notificationTimeOption", time)
     }
-
-    fun onNotificationsToggle(enabled: Boolean) {
-        // ZMIANA: Używamy nowej funkcji
+    fun setNotificationsEnabled(enabled: Boolean) {
+        // Ta sama logika co wcześniej, ale bez sprawdzania uprawnień
         _uiState.update { it.copy(notificationsEnabled = enabled) }
         updateDeviceSetting("notificationEnabled", enabled)
     }
 
-    fun onLogout() {
-        val userId = auth.currentUser?.uid
-        if (userId != null) {
-            // Używamy Firebase Installations ID, aby upewnić się,
-            // że usuwamy dane poprawnego urządzenia.
-            Firebase.installations.id.addOnSuccessListener { deviceId ->
-                // FieldValue.delete() to specjalny obiekt, który usuwa pole z dokumentu
-                val deviceField = FieldValue.delete()
-
-                firestore.collection("students").document(userId)
-                    // Usuwamy całą mapę dla tego urządzenia
-                    .update("devices.$deviceId", deviceField)
-                    .addOnSuccessListener {
-                        Log.d("Logout", "Dane urządzenia (w tym token) pomyślnie usunięte.")
-                        // Po pomyślnym usunięciu, wylogowujemy użytkownika
-                        auth.signOut()
-                    }
-                    .addOnFailureListener { e ->
-                        Log.w("Logout", "Błąd podczas usuwania danych urządzenia", e)
-                        // Mimo błędu, nadal wylogowujemy użytkownika
-                        auth.signOut()
-                    }
-            }.addOnFailureListener {
-                // Jeśli nie uda się pobrać ID urządzenia, po prostu się wyloguj
-                auth.signOut()
+    fun onNotificationToggleRequested(
+        isChecked: Boolean,
+        requestPermission: () -> Unit // Lambda do wywołania prośby o uprawnienia
+    ) {
+        if (isChecked) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                requestPermission()
+            } else {
+                // Na starszych wersjach po prostu włączamy
+                updateDeviceSetting("notificationEnabled", true)
+                _uiState.update { it.copy(notificationsEnabled = true) }
             }
         } else {
-            // Jeśli z jakiegoś powodu nie ma zalogowanego użytkownika, po prostu wykonaj signOut
-            auth.signOut()
+            updateDeviceSetting("notificationEnabled", false)
+            _uiState.update { it.copy(notificationsEnabled = false) }
+        }
+    }
+
+    fun onLogout() {
+        val userId = auth.currentUser?.uid ?: run {
+            auth.signOut() // Jeśli nie ma usera, po prostu wyloguj
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val deviceId = installations.id.await()
+                val deviceField = FieldValue.delete()
+                firestore.collection("students").document(userId)
+                    .update("devices.$deviceId", deviceField).await()
+                Log.d("Logout", "Dane urządzenia pomyślnie usunięte.")
+            } catch (e: Exception) {
+                Log.w("Logout", "Błąd podczas usuwania danych urządzenia, ale i tak wylogowuję", e)
+            } finally {
+                // Niezależnie od tego, czy usunięcie danych się udało, czy nie, wyloguj
+                auth.signOut()
+            }
         }
     }
 

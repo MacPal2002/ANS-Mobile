@@ -1,4 +1,4 @@
-package com.example.test1.ui.settings
+package com.example.test1.ui.settings.groupSelection
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,14 +36,16 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.test1.data.GroupNode
 import com.example.test1.ui.component.AppTopBar
+import com.example.test1.ui.settings.destructiveColor
 
 @Composable
 fun GroupSelectionScreen(
     onNavigateBack: () -> Unit,
-    viewModel: GroupSelectionViewModel = viewModel()
+    viewModel: GroupSelectionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 

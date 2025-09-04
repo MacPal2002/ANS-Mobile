@@ -1,6 +1,7 @@
 [versions]
 agp = "8.9.1"
 ksp = "2.0.21-1.0.25"
+hilt = "2.51.1"
 kotlin = "2.0.21"
 coreKtx = "1.15.0"
 lifecycleRuntimeKtx = "2.8.7"
@@ -13,6 +14,7 @@ appcompat = "1.7.1"
 materialVersion = "1.12.0"
 roomRuntime = "2.7.2"
 gson = "2.10.1"
+hiltNavigationCompose = "1.2.0"
 
 # Inne
 datastorePreferences = "1.1.7"
@@ -59,11 +61,16 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 androidx-material = { module = "androidx.compose.material:material" }
 androidx-material-icons-extended-android = { module = "androidx.compose.material:material-icons-extended-android", version.ref = "materialIconsExtendedAndroid" }
 androidx-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }
+androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 
 # Inne
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-constraintlayout-compose = { module = "androidx.constraintlayout:constraintlayout-compose", version.ref = "constraintlayoutCompose" }
 androidx-palette-ktx = { group = "androidx.palette", name = "palette-ktx", version.ref = "paletteKtx" }
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
+
+
 
 # Testy
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -77,3 +84,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
 google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+hilt-gradle-plugin = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

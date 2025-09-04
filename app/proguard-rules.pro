@@ -34,11 +34,11 @@
 
 # --- Hilt (Wstrzykiwanie Zależności) ---
 # Chroni klasy generowane przez Hilt.
-#-keep class * implements dagger.hilt.internal.GeneratedComponent { *; }
-#-keep class * implements dagger.hilt.internal.GeneratedEntryPoint { *; }
-#-keep class dagger.hilt.internal.processedrootsentinel.codegen.*
-#-keep class dagger.hilt.android.internal.managers.*
-#-keep class dagger.hilt.android.internal.modules.ApplicationContextModule
+-keep class * implements dagger.hilt.internal.GeneratedComponent { *; }
+-keep class * implements dagger.hilt.internal.GeneratedEntryPoint { *; }
+-keep class dagger.hilt.internal.processedrootsentinel.codegen.*
+-keep class dagger.hilt.android.internal.managers.*
+-keep class dagger.hilt.android.internal.modules.ApplicationContextModule
 
 # --- Gson / Room Type Converters ---
 # BARDZO WAŻNE: Zapobiega awarii aplikacji przy deserializacji obiektów z JSON,

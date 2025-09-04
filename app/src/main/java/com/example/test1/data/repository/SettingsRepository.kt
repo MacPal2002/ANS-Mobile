@@ -1,4 +1,4 @@
-package com.example.test1.ui.settings
+package com.example.test1.data.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences

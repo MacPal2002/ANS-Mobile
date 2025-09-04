@@ -1,13 +1,12 @@
-package com.example.test1
+package com.example.test1.util
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.example.test1.utils.checkNotificationPermission
+import com.example.test1.MainActivity
+import com.example.test1.R
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.installations.ktx.installations

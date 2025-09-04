@@ -85,6 +85,7 @@ import java.time.format.TextStyle
 import java.util.Locale
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.test1.data.ObservedGroup
 
 data class ScheduleEvent(
@@ -105,7 +106,7 @@ private val DayStartHour = 7
 @Composable
 fun ScheduleScreen(
     onNavigateToSettings: () -> Unit,
-    scheduleViewModel: ScheduleViewModel = viewModel(), // Wstrzyknięcie ViewModel
+    scheduleViewModel: ScheduleViewModel = hiltViewModel(),
 ) {
     // Krok 1: Obserwuj stan z ViewModelu
     val uiState by scheduleViewModel.uiState.collectAsState()
@@ -200,39 +201,52 @@ fun ScheduleScreen(
 
                 // Krok 4: Wyświetlaj UI w zależności od stanu (ładowanie, błąd, sukces)
                 Box(modifier = Modifier.fillMaxSize()) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    } else if (uiState.errorMessage != null) {
+                    // 1. Zawsze pokazuj plan, jeśli nie ma ładowania i dane istnieją.
+                    if (!uiState.isLoading) {
+                        if (displayEvents.isNotEmpty()) {
+                            DaySchedule(
+                                events = displayEvents,
+                                isToday = uiState.selectedDate == LocalDate.now(),
+                                currentTime = currentTime
+                            )
+                        } else {
+                            // Pokaż "Brak zajęć", jeśli lista jest pusta, ale nie ma błędu
+                            if (uiState.errorMessage == null) {
+                                Column(
+                                    modifier = Modifier.align(Alignment.Center),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DoneAll,
+                                        contentDescription = "Brak zajęć",
+                                        modifier = Modifier.size(48.dp),
+                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                    )
+                                    Text(
+                                        text = "Brak zajęć",
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        fontSize = 16.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // 2. OSOBNO, na wierzchu, pokazuj błąd, jeśli wystąpił.
+                    // Dzięki temu dane z cache nie znikną.
+                    if (uiState.errorMessage != null) {
                         Text(
                             text = uiState.errorMessage!!,
                             color = Color.Red,
                             modifier = Modifier.align(Alignment.Center).padding(16.dp),
                             textAlign = TextAlign.Center
                         )
-                    } else if (displayEvents.isEmpty()) {
-                        Column(
-                            modifier = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.DoneAll,
-                                contentDescription = "Brak zajęć",
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                            )
-                            Text(
-                                text = "Brak zajęć",
-                                color = MaterialTheme.colorScheme.onBackground,
-                                fontSize = 16.sp
-                            )
-                        }
-                    } else {
-                        DaySchedule(
-                            events = displayEvents,
-                            isToday = uiState.selectedDate == LocalDate.now(),
-                            currentTime = currentTime
-                        )
+                    }
+
+                    // 3. OSOBNO, na wierzchu, pokazuj wskaźnik ładowania.
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
                 }
             }

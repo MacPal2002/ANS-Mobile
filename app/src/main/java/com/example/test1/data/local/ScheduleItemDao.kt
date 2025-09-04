@@ -4,11 +4,10 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.example.test1.data.ScheduleItem
 import java.time.LocalDate
 
 @Dao
-interface ScheduleDao {
+interface ScheduleItemDao {
 
     // Pobiera plan dla danej grupy i daty
     @Query("SELECT * FROM schedule_items WHERE groupId = :groupId AND date = :date")

@@ -1,11 +1,10 @@
-package com.example.test1.data
+package com.example.test1.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.google.firebase.Timestamp
 import java.time.Instant
-import com.example.test1.data.local.ScheduleTypeConverters
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId

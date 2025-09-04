@@ -9,22 +9,23 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.test1.data.repository.SettingsRepository
 import com.example.test1.ui.navigation.AppNavigation
-import com.example.test1.ui.settings.SettingsRepository
-import com.example.test1.ui.settings.SettingsViewModel
-import com.example.test1.ui.settings.SettingsViewModelFactory
-import com.example.test1.ui.settings.settingsDataStore
 import com.example.test1.ui.theme.AppTheme
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         createNotificationChannel()
         enableEdgeToEdge()
 
-        // 1. Utwórz instancję repozytorium, aby mieć dostęp do DataStore
-        val settingsRepository = SettingsRepository(this.settingsDataStore)
 
         setContent {
             // 2. Pobierz opcję motywu z repozytorium jako stan
@@ -39,12 +40,7 @@ class MainActivity : ComponentActivity() {
 
             // 4. Przekaż właściwą decyzję (true/false) do AppTheme
             AppTheme(darkTheme = useDarkTheme) {
-                val settingsViewModel: SettingsViewModel = viewModel(
-                    factory = SettingsViewModelFactory(
-                        application = application,
-                        repository = settingsRepository)
-                )
-                AppNavigation(settingsViewModel = settingsViewModel)
+                AppNavigation()
             }
         }
     }

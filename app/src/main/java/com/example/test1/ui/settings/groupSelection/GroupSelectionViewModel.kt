@@ -1,4 +1,4 @@
-package com.example.test1.ui.settings
+package com.example.test1.ui.settings.groupSelection
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
@@ -6,12 +6,14 @@ import androidx.lifecycle.ViewModel
 import com.example.test1.data.GroupNode
 import androidx.lifecycle.viewModelScope
 import com.example.test1.data.local.AppDatabase
-import com.example.test1.ui.schedule.ScheduleRepository
+import com.example.test1.data.repository.ScheduleRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.update
+import javax.inject.Inject
 
 data class GroupSelectionState(
     val isLoading: Boolean = true,
@@ -20,10 +22,12 @@ data class GroupSelectionState(
     val selectedGroupIds: Set<Int> = emptySet()
 )
 
-class GroupSelectionViewModel(application: Application) : AndroidViewModel(application) {
-    private val db = AppDatabase.getInstance(application)
-    private val scheduleDao = db.scheduleDao()
-    private val repository = ScheduleRepository(scheduleDao)
+
+@HiltViewModel
+class GroupSelectionViewModel @Inject constructor(
+    private val repository: ScheduleRepository
+) : ViewModel() {
+
     private val _uiState = MutableStateFlow(GroupSelectionState())
     val uiState: StateFlow<GroupSelectionState> = _uiState.asStateFlow()
 

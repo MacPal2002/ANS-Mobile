@@ -5,9 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 //noinspection UsingMaterialAndMaterial3Libraries
@@ -21,18 +18,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.test1.ui.component.AppTopBar
-import com.example.test1.utils.checkNotificationPermission
+import com.example.test1.ui.component.CreativeAppInfoCard
+import com.example.test1.ui.component.ProfileHeader
+import com.example.test1.ui.component.SectionHeader
+import com.example.test1.ui.component.SettingsClickableRow
+import com.example.test1.ui.component.SettingsOptionPickerDialog
+import com.example.test1.ui.component.SettingsSection
+import com.example.test1.ui.component.SettingsToggleRow
+import com.example.test1.util.checkNotificationPermission
 
 
 val destructiveColor = Color(0xFFD32F2F)/**/
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel,
+    viewModel: SettingsViewModel = hiltViewModel(),
     onLogout: () -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToGroupSelection: () -> Unit,
@@ -100,8 +104,9 @@ fun SettingsScreen(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted: Boolean ->
             if (isGranted) {
-                viewModel.onNotificationsToggle(true)
+                viewModel.setNotificationsEnabled(true)
             } else {
+                viewModel.setNotificationsEnabled(false)
                 Toast.makeText(context, "Nie przyznano uprawnień", Toast.LENGTH_SHORT).show()
             }
         }
@@ -157,25 +162,8 @@ fun SettingsScreen(
                                 title = "Wysyłaj powiadomienia",
                                 checked = isToggleChecked,
                                 onCheckedChange = { isChecked ->
-                                    if (isChecked) {
-                                        // Użytkownik chce WŁĄCZYĆ powiadomienia
-                                        // Sprawdzamy wersję Androida, bo prośba jest potrzebna od API 33 (Android 13)
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                            // Sprawdzamy, czy mamy już uprawnienia
-                                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-                                                // Mamy uprawnienia, po prostu włączamy
-                                                viewModel.onNotificationsToggle(true)
-                                            } else {
-                                                // Nie mamy uprawnień, prosimy o nie
-                                                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                            }
-                                        } else {
-                                            // Na starszych wersjach Androida nie trzeba pytać, po prostu włączamy
-                                            viewModel.onNotificationsToggle(true)
-                                        }
-                                    } else {
-                                        // Użytkownik chce WYŁĄCZYĆ powiadomienia
-                                        viewModel.onNotificationsToggle(false)
+                                    viewModel.onNotificationToggleRequested(isChecked) {
+                                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
                                 }
                             )

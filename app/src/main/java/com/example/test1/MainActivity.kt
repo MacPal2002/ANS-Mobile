@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
             AppTheme(darkTheme = useDarkTheme) {
                 val settingsViewModel: SettingsViewModel = viewModel(
                     factory = SettingsViewModelFactory(
+                        application = application,
                         repository = settingsRepository)
                 )
                 AppNavigation(settingsViewModel = settingsViewModel)

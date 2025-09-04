@@ -1,6 +1,6 @@
 package com.example.test1.ui.settings
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
 import androidx.lifecycle.viewModelScope
 import com.example.test1.ui.schedule.ScheduleRepository
 import com.google.firebase.Firebase
@@ -15,19 +15,25 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import android.util.Log
+import androidx.lifecycle.AndroidViewModel
+import com.example.test1.data.local.AppDatabase
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.installations.installations
 
 class SettingsViewModel(
+    application: Application,
     private val settingsRepository: SettingsRepository
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(SettingsState())
     val uiState: StateFlow<SettingsState> = _uiState.asStateFlow()
 
     private val auth = Firebase.auth
-    private val db = Firebase.firestore
-    private val scheduleRepository = ScheduleRepository()
+    private val firestore = Firebase.firestore
+    private val db = AppDatabase.getInstance(application)
+    private val scheduleDao = db.scheduleDao()
+
+    private val scheduleRepository = ScheduleRepository(scheduleDao = scheduleDao)
     private var groupsListenerJob: Job? = null
 
     private val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
@@ -56,7 +62,7 @@ class SettingsViewModel(
             Firebase.installations.id.addOnSuccessListener { deviceId ->
                 viewModelScope.launch {
                     try {
-                        val userDoc = db.collection("students").document(userId).get().await()
+                        val userDoc = firestore.collection("students").document(userId).get().await()
                         if (userDoc.exists()) {
                             val devicesMap = userDoc.get("devices") as? Map<String, Any>
                             val deviceSettings = devicesMap?.get(deviceId) as? Map<String, Any>
@@ -113,7 +119,7 @@ class SettingsViewModel(
         val userId = auth.currentUser?.uid ?: return
         Firebase.installations.id.addOnSuccessListener { deviceId ->
             val settingPath = "devices.$deviceId.$key"
-            db.collection("students").document(userId).update(settingPath, value)
+            firestore.collection("students").document(userId).update(settingPath, value)
         }
     }
 
@@ -144,7 +150,7 @@ class SettingsViewModel(
                 // FieldValue.delete() to specjalny obiekt, który usuwa pole z dokumentu
                 val deviceField = FieldValue.delete()
 
-                db.collection("students").document(userId)
+                firestore.collection("students").document(userId)
                     // Usuwamy całą mapę dla tego urządzenia
                     .update("devices.$deviceId", deviceField)
                     .addOnSuccessListener {

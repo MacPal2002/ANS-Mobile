@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -27,8 +26,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.test1.ui.component.AcademyTitle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.test1.ui.component.NotificationBanner
 import kotlinx.coroutines.delay
 
@@ -38,10 +37,9 @@ import kotlinx.coroutines.delay
 fun RegisterScreen(
     onRegisterSuccess: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
-    viewModel: RegisterViewModel = viewModel()
+    viewModel: RegisterViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
     var showSuccessBanner by remember { mutableStateOf(false) }
     var showErrorBanner by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }

@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.map
  * @param dataStore Bezpośrednia referencja do instancji DataStore.
  */
 class SettingsRepository(
-    // ZMIANA: Zamiast Context, przyjmujemy bezpośrednio DataStore
     private val dataStore: DataStore<Preferences>
 ) {
 

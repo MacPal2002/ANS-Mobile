@@ -1,7 +1,6 @@
 package com.example.test1.ui.schedule
 
 import android.annotation.SuppressLint
-import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,7 +48,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -72,7 +70,6 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.test1.ui.component.AppTopBar
 import kotlinx.coroutines.delay
 import java.time.DayOfWeek
@@ -84,6 +81,9 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TextFieldDefaults
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.test1.data.ObservedGroup
@@ -98,7 +98,7 @@ data class ScheduleEvent(
 
 // Definicje stałych dla layoutu siatki
 private val HourHeight = 80.dp
-private val DayStartHour = 7
+private const val DayStartHour = 7
 
 // --- GŁÓWNY EKRAN PLANU ZAJĘĆ ---
 
@@ -108,8 +108,8 @@ fun ScheduleScreen(
     onNavigateToSettings: () -> Unit,
     scheduleViewModel: ScheduleViewModel = hiltViewModel(),
 ) {
-    // Krok 1: Obserwuj stan z ViewModelu
     val uiState by scheduleViewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val tertiaryContainerColor = MaterialTheme.colorScheme.tertiaryContainer
     val secondaryContainerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -121,7 +121,6 @@ fun ScheduleScreen(
         MonthCalendarDialog(
             initialDate = uiState.selectedDate,
             onDateSelected = {
-                // Krok 2: Akcje użytkownika wywołują metody na ViewModelu
                 scheduleViewModel.onDateSelected(it)
                 showMonthPicker = false
             },
@@ -144,7 +143,19 @@ fun ScheduleScreen(
         }
     }
 
-    // Krok 3: Mapuj dane z Modelu (ScheduleItem) na dane dla Widoku (ScheduleEvent)
+    LaunchedEffect(uiState.errorMessage) {
+        val errorMessage = uiState.errorMessage
+
+        if (errorMessage != null) {
+            snackbarHostState.showSnackbar(
+                message = errorMessage,
+                duration = SnackbarDuration.Short
+            )
+            scheduleViewModel.onErrorShown()
+        }
+    }
+
+    // Mapuj dane z Modelu (ScheduleItem) na dane dla Widoku (ScheduleEvent)
     val displayEvents = remember(uiState.events) {
         uiState.events.map { item ->
             ScheduleEvent(
@@ -167,6 +178,7 @@ fun ScheduleScreen(
 
     MaterialTheme {
         Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 AppTopBar(
                     actionIcon = Icons.Default.Settings,
@@ -199,9 +211,7 @@ fun ScheduleScreen(
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                // Krok 4: Wyświetlaj UI w zależności od stanu (ładowanie, błąd, sukces)
                 Box(modifier = Modifier.fillMaxSize()) {
-                    // 1. Zawsze pokazuj plan, jeśli nie ma ładowania i dane istnieją.
                     if (!uiState.isLoading) {
                         if (displayEvents.isNotEmpty()) {
                             DaySchedule(
@@ -210,7 +220,6 @@ fun ScheduleScreen(
                                 currentTime = currentTime
                             )
                         } else {
-                            // Pokaż "Brak zajęć", jeśli lista jest pusta, ale nie ma błędu
                             if (uiState.errorMessage == null) {
                                 Column(
                                     modifier = Modifier.align(Alignment.Center),
@@ -232,19 +241,6 @@ fun ScheduleScreen(
                             }
                         }
                     }
-
-                    // 2. OSOBNO, na wierzchu, pokazuj błąd, jeśli wystąpił.
-                    // Dzięki temu dane z cache nie znikną.
-                    if (uiState.errorMessage != null) {
-                        Text(
-                            text = uiState.errorMessage!!,
-                            color = Color.Red,
-                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    // 3. OSOBNO, na wierzchu, pokazuj wskaźnik ładowania.
                     if (uiState.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
@@ -651,13 +647,10 @@ fun HorizontalDayPicker(
 @Composable
 fun DayPill(date: LocalDate, isSelected: Boolean, onClick: () -> Unit) {
     val dayOfWeekFormatter = DateTimeFormatter.ofPattern("E", Locale("pl"))
-    val dayOfMonth = date.dayOfMonth.toString()
     val dayOfWeekText = date.format(dayOfWeekFormatter).uppercase()
 
     val isToday = date == LocalDate.now()
     val isWeekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
-
-    // --- NOWA, ZUNIFIKOWANA LOGIKA KOLORÓW ---
 
     val containerColor = when {
         isSelected -> MaterialTheme.colorScheme.primary     // Ciemne tło dla zaznaczonego dnia

@@ -1,6 +1,6 @@
 package com.example.test1.ui.settings
 
-import android.widget.Toast
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,13 +36,14 @@ import com.example.test1.util.checkNotificationPermission
 val destructiveColor = Color(0xFFD32F2F)/**/
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
     onLogout: () -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToGroupSelection: () -> Unit,
 ) {
     val context = LocalContext.current
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by settingsViewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var showTimeDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
@@ -51,9 +52,15 @@ fun SettingsScreen(
     val themeOptions = listOf("Jasny", "Ciemny", "Systemowy")
 
     // Obsługa błędów
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+    LaunchedEffect(uiState.errorMessage) {
+        val errorMessage = uiState.errorMessage
+
+        if (errorMessage != null) {
+            snackbarHostState.showSnackbar(
+                message = errorMessage,
+                duration = SnackbarDuration.Short
+            )
+            settingsViewModel.onErrorShown()
         }
     }
 
@@ -63,7 +70,7 @@ fun SettingsScreen(
             options = timeOptions,
             selectedOption = uiState.notificationTimeOption,
             onOptionSelected = {
-                viewModel.onNotificationTimeChange(it)
+                settingsViewModel.onNotificationTimeChange(it)
                 showTimeDialog = false
             },
             onDismissRequest = { showTimeDialog = false }
@@ -76,17 +83,21 @@ fun SettingsScreen(
             options = themeOptions,
             selectedOption = uiState.themeOption,
             onOptionSelected = {
-                viewModel.onThemeChange(it)
+                settingsViewModel.onThemeChange(it)
                 showThemeDialog = false
             },
             onDismissRequest = { showThemeDialog = false }
         )
     }
+    // To jest stan, który przechowuje informację o tym, czy aplikacja ma uprawnienia do wysyłania powiadomień.
+    // Jego początkowa wartość jest pobierana za pomocą checkNotificationPermission(context),
+    // która sprawdza stan uprawnień przy pierwszym uruchomieniu.
 
     var hasNotificationPermission by remember {
         mutableStateOf(checkNotificationPermission(context))
     }
 
+    // Obserwujemy zmiany w cyklu życia, aby zaktualizować stan uprawnień, gdy aplikacja wraca na pierwszy plan.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -100,14 +111,15 @@ fun SettingsScreen(
         }
     }
 
+    // Rejestrujemy launcher do obsługi prośby o uprawnienia do powiadomień.
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted: Boolean ->
             if (isGranted) {
-                viewModel.setNotificationsEnabled(true)
+                settingsViewModel.setNotificationsEnabled(true)
             } else {
-                viewModel.setNotificationsEnabled(false)
-                Toast.makeText(context, "Nie przyznano uprawnień", Toast.LENGTH_SHORT).show()
+                settingsViewModel.setNotificationsEnabled(false)
+                settingsViewModel.setErrorMessage("Nie przyznano uprawnień")
             }
         }
     )
@@ -115,6 +127,7 @@ fun SettingsScreen(
     val isToggleChecked = uiState.notificationsEnabled && hasNotificationPermission
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             AppTopBar(
                 navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
@@ -162,7 +175,8 @@ fun SettingsScreen(
                                 title = "Wysyłaj powiadomienia",
                                 checked = isToggleChecked,
                                 onCheckedChange = { isChecked ->
-                                    viewModel.onNotificationToggleRequested(isChecked) {
+                                    // Jeśli użytkownik włącza powiadomienia, ale nie mamy uprawnień, prosimy o nie.
+                                    settingsViewModel.onNotificationToggleRequested(isChecked) {
                                         permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
                                 }
@@ -185,7 +199,7 @@ fun SettingsScreen(
                 item {
                     TextButton(
                         onClick = {
-                            viewModel.onLogout()
+                            settingsViewModel.onLogout()
                             onLogout()
                         },
                         modifier = Modifier.padding(top = 20.dp, bottom = 20.dp),

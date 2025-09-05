@@ -3,22 +3,24 @@ package com.example.test1.ui.register
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import com.google.firebase.functions.FirebaseFunctions
-import com.google.firebase.functions.ktx.functions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import com.google.firebase.ktx.Firebase
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
-class RegisterViewModel : ViewModel() {
+@HiltViewModel
+class RegisterViewModel @Inject constructor(
+    private val functions: FirebaseFunctions,
+
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RegisterState())
     val uiState: StateFlow<RegisterState> = _uiState.asStateFlow()
-
-    private val functions: FirebaseFunctions = Firebase.functions("europe-central2")
 
     // --- Event Handlers ---
     fun onAlbumNumberChange(value: String) {

@@ -2,7 +2,7 @@ package com.example.test1.ui.settings
 
 data class SettingsState(
     val isLoading: Boolean = true,
-    val error: String? = null,
+    val errorMessage: String? = null,
     val displayName: String = "Ładowanie...",
     val albumNumber: String = "",
     val deanGroupName: String = "",

@@ -1,11 +1,7 @@
 package com.example.test1.ui.schedule
 
-
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.test1.data.local.AppDatabase
 import com.example.test1.data.repository.ScheduleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -143,6 +139,10 @@ class ScheduleViewModel @Inject constructor(
         }
     }
 
+    fun onErrorShown() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
     /**
      * Ważne: Zawsze usuwaj listenery, aby uniknąć wycieków pamięci.
      */
@@ -152,3 +152,4 @@ class ScheduleViewModel @Inject constructor(
         groupsListenerJob?.cancel()
     }
 }
+

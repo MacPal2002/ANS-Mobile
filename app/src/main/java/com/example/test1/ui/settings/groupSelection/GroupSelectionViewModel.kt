@@ -1,11 +1,8 @@
 package com.example.test1.ui.settings.groupSelection
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import com.example.test1.data.GroupNode
 import androidx.lifecycle.viewModelScope
-import com.example.test1.data.local.AppDatabase
 import com.example.test1.data.repository.ScheduleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

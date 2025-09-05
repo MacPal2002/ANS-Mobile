@@ -1,19 +1,16 @@
 package com.example.test1.ui.login
 
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
@@ -24,7 +21,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -34,15 +30,14 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.test1.ui.component.AcademyTitle
 import com.example.test1.ui.component.NotificationBanner
-import com.example.test1.ui.register.RegisterStatus
 import kotlinx.coroutines.delay
 
 @Composable
 fun LoginScreen(
-    loginViewModel: LoginViewModel = viewModel(),
+    loginViewModel: LoginViewModel = hiltViewModel(),
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit
 ) {
@@ -50,7 +45,6 @@ fun LoginScreen(
 
     // Pobieramy stan z ViewModelu i obserwujemy jego zmiany
     val uiState by loginViewModel.uiState.collectAsState()
-    val context = LocalContext.current
 
 
     // Krok 1: Dodajemy stan do kontrolowania widoczności banera
@@ -171,7 +165,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
-                    onClick = { loginViewModel.login(context) },
+                    onClick = { loginViewModel.login() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),

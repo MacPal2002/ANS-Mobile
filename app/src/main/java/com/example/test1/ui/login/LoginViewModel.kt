@@ -1,25 +1,30 @@
 package com.example.test1.ui.login
 
-import android.content.Context
-import com.google.firebase.installations.ktx.installations
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.ktx.auth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.installations.FirebaseInstallations
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.google.firebase.messaging.ktx.messaging
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
 
-class LoginViewModel : ViewModel() {
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val auth: FirebaseAuth,
+    private val installations: FirebaseInstallations,
+    private val firestore: FirebaseFirestore,
+    ) : ViewModel() {
 
-    private val auth: FirebaseAuth = Firebase.auth
-    private val db = Firebase.firestore
 
     // Prywatny, modyfikowalny stan
     private val _uiState = MutableStateFlow(LoginState())
@@ -36,35 +41,33 @@ class LoginViewModel : ViewModel() {
     }
 
 
-    private fun saveDeviceData() {
-        val userId = auth.currentUser?.uid ?: return
+    private suspend fun saveDeviceData() {
+        try {
+            val userId = auth.currentUser?.uid ?: return
 
-        // ZMIANA: Użyj Firebase Installation ID zamiast ANDROID_ID
-        Firebase.installations.id.addOnSuccessListener { deviceId ->
-            Firebase.messaging.token.addOnCompleteListener { task ->
-                if (!task.isSuccessful) {
-                    Log.w("FCM", "Fetching FCM registration token failed", task.exception)
-                    return@addOnCompleteListener
-                }
-                val token = task.result
+            val deviceId = installations.id.await()
+            val token = Firebase.messaging.token.await()
 
-                val deviceUpdates = mapOf(
-                    "devices.$deviceId.token" to token,
-                    "devices.$deviceId.notificationEnabled" to false, // Domyślnie wyłączone
-                    "devices.$deviceId.notificationTimeOption" to "30 minut", // Domyślnie 30 minut
-                    "lastLogin" to FieldValue.serverTimestamp()
-                )
+            val deviceUpdates = mapOf(
+                "devices.$deviceId.token" to token,
+                "devices.$deviceId.notificationEnabled" to false,
+                "devices.$deviceId.notificationTimeOption" to "30 minut",
+                "lastLogin" to FieldValue.serverTimestamp()
+            )
 
-                db.collection("students").document(userId)
-                    .update(deviceUpdates)
-                    .addOnSuccessListener { Log.d("Firestore", "Device data and lastLogin updated for device: $deviceId") }
-                    .addOnFailureListener { e -> Log.w("Firestore", "Error updating device data", e) }
-            }
+            firestore.collection("students").document(userId)
+                .update(deviceUpdates)
+                .await()
+
+            Log.d("Firestore", "Device data and lastLogin updated for device: $deviceId")
+
+        } catch (e: Exception) {
+            Log.w("Firestore", "Error updating device data", e)
         }
     }
 
     // Główna funkcja logiki logowania
-    fun login(context: Context) {
+    fun login() {
         // 1. Czyszczenie starych błędów i walidacja pól
         _uiState.update { it.copy(albumNumberError = null, passwordError = null, genericError = null) }
         val albumNumber = _uiState.value.albumNumber
@@ -84,12 +87,12 @@ class LoginViewModel : ViewModel() {
         // 2. Rozpoczęcie procesu logowania (etap 1: zapytanie do Firestore)
         viewModelScope.launch {
             _uiState.update { it.copy(status = LoginStatus.LOADING) }
+            try {
+                val document = firestore.collection("student_lookups")
+                    .document(albumNumber)
+                    .get()
+                    .await()
 
-            db.collection("student_lookups")
-                .document(albumNumber)
-                .get()
-                .addOnSuccessListener { document ->
-                    // POPRAWIONA LOGIKA: Sprawdzamy, czy dokument istnieje
                     if (document != null && document.exists()) {
                         // SUKCES: Znaleziono dokument, pobieramy z niego email
                         val email = document.getString("email")
@@ -104,24 +107,24 @@ class LoginViewModel : ViewModel() {
                         // BŁĄD: Nie znaleziono studenta o takim numerze
                         _uiState.update { it.copy(status = LoginStatus.ERROR, genericError = "Student o podanym numerze albumu nie istnieje.") }
                     }
-                }
-                .addOnFailureListener { exception ->
-                    // Błąd połączenia z bazą danych
-                    _uiState.update { it.copy(status = LoginStatus.ERROR, genericError = "Błąd połączenia z bazą danych: ${exception.message}") }
-                }
+            } catch (e: Exception) {
+            // Jeden blok catch łapie błędy z get() i signInWithEmailAndPassword()
+            _uiState.update { it.copy(status = LoginStatus.ERROR, genericError = "Błąd: ${e.message}") }
+            }
+
         }
     }
 
-    private fun signInToFirebaseAuth(email: String, password: String) {
-        auth.signInWithEmailAndPassword(email, password)
-            .addOnSuccessListener {
-                saveDeviceData()
-
-                // Aktualizujemy stan UI, aby przejść dalej
-                _uiState.update { it.copy(status = LoginStatus.SUCCESS) }
-            }
-            .addOnFailureListener {
-                _uiState.update { it.copy(status = LoginStatus.ERROR, genericError = "Nieprawidłowe hasło.") }
-            }
+    private suspend fun signInToFirebaseAuth(email: String, password: String) {
+        try {
+            auth.signInWithEmailAndPassword(email, password).await()
+            saveDeviceData()
+            _uiState.update { it.copy(status = LoginStatus.SUCCESS) }
+        } catch (e: FirebaseAuthInvalidCredentialsException) {
+            _uiState.update { it.copy(status = LoginStatus.ERROR, genericError = "Nieprawidłowe hasło.") }
+        } catch (e: Exception) {
+            // Inne błędy
+            _uiState.update { it.copy(status = LoginStatus.ERROR, genericError = "Wystąpił nieoczekiwany błąd.") }
+        }
     }
 }

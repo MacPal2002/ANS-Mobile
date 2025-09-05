@@ -90,13 +90,10 @@ class ScheduleRepository @Inject constructor(
     }
 
 
-    suspend fun getGroupDetails(groupIds: List<Int>): Result<List<ObservedGroup>> {
+    private suspend fun getGroupDetails(groupIds: List<Int>): Result<List<ObservedGroup>> {
         return try {
             if (groupIds.isEmpty()) return Result.success(emptyList())
 
-            // ZMIANA #1: Szukamy w poprawnej kolekcji -> "groupDetails"
-            // ZMIANA #2: Używamy FieldPath.documentId(), aby szukać po ID DOKUMENTU, a nie polu w środku.
-            //            Musimy też zamienić listę liczb (Int) na listę tekstów (String), bo ID dokumentów to tekst.
             val documents = firestore.collection("groupDetails")
                 .whereIn(FieldPath.documentId(), groupIds.map { it.toString() })
                 .get()

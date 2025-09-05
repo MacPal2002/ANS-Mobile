@@ -1,13 +1,9 @@
 package com.example.test1.ui.settings
 
-import android.app.Application
 import android.os.Build
 import androidx.lifecycle.viewModelScope
 import com.example.test1.data.repository.ScheduleRepository
-import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.auth
-import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,14 +12,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import android.util.Log
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
-import com.example.test1.data.local.AppDatabase
 import com.example.test1.data.repository.SettingsRepository
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.installations.FirebaseInstallations
-import com.google.firebase.installations.installations
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
@@ -85,10 +78,10 @@ class SettingsViewModel @Inject constructor(
                         )
                     }
                 } else {
-                    _uiState.update { it.copy(isLoading = false, error = "Nie znaleziono danych użytkownika.") }
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "Nie znaleziono danych użytkownika.") }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message, isLoading = false) }
+                _uiState.update { it.copy(errorMessage = e.message, isLoading = false) }
             }
         }
     }
@@ -104,7 +97,7 @@ class SettingsViewModel @Inject constructor(
                         it.copy(observedGroups = groups.map { g -> g.name }.ifEmpty { listOf("Brak") })
                     }
                 }.onFailure { error ->
-                    _uiState.update { it.copy(error = error.message) }
+                    _uiState.update { it.copy(errorMessage = error.message) }
                 }
             }
         }
@@ -127,7 +120,8 @@ class SettingsViewModel @Inject constructor(
                 val settingPath = "devices.$deviceId.$key"
                 firestore.collection("students").document(userId).update(settingPath, value).await()
             } catch (e: Exception) {
-                Log.w("SettingsVM", "Błąd podczas aktualizacji ustawienia '$key'", e)
+                Log.e("SettingsViewModel", "Błąd podczas aktualizacji ustawienia urządzenia", e)
+                _uiState.update { it.copy(errorMessage = e.message) }
             }
         }
     }
@@ -144,14 +138,13 @@ class SettingsViewModel @Inject constructor(
         updateDeviceSetting("notificationTimeOption", time)
     }
     fun setNotificationsEnabled(enabled: Boolean) {
-        // Ta sama logika co wcześniej, ale bez sprawdzania uprawnień
         _uiState.update { it.copy(notificationsEnabled = enabled) }
         updateDeviceSetting("notificationEnabled", enabled)
     }
 
     fun onNotificationToggleRequested(
         isChecked: Boolean,
-        requestPermission: () -> Unit // Lambda do wywołania prośby o uprawnienia
+        requestPermission: () -> Unit,
     ) {
         if (isChecked) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -189,7 +182,15 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    // WAŻNE: Pamiętaj, aby usunąć listenera, gdy ViewModel jest niszczony, aby uniknąć wycieków pamięci.
+    fun onErrorShown() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    fun setErrorMessage(message: String) {
+        _uiState.update { it.copy(errorMessage = message) }
+    }
+
+    // WAŻNE: Usuwanie listenera, gdy ViewModel jest niszczony, aby uniknąć wycieków pamięci.
     override fun onCleared() {
         super.onCleared()
         auth.removeAuthStateListener(authStateListener)

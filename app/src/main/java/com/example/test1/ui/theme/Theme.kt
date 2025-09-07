@@ -12,28 +12,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// ui/theme/Color.kt
-/*private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF212C5D),
-    secondary = Color(0xFFE8EAF6),
-    background = Color(0xFFFFFFFF),
-    surface = Color(0xFFFFFFFF),
-    onPrimary = Color.White,
-    onSecondary = Color(0xFF1F1F1F),
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-)
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFB0C4FF),
-    secondary = Color(0xFFE8EAF6),
-    background = Color(0xFF121212),
-    surface = Color(0xFF121212),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onBackground = Color.White,
-    onSurface = Color.White,
-)*/
 private val LightColorScheme = lightColorScheme(
     primary = Color(0xFF212C5D),
     secondary = Color(0xFFE8EAF6),

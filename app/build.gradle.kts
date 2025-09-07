@@ -4,7 +4,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
     alias(libs.plugins.hilt.gradle.plugin)
-    id("com.google.devtools.ksp")
+    id("com.google.devtools.ksp") version "2.0.21-1.0.25" // <-- jawnie ta sama wersja co w libs.versions.toml
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21" // <-- dopasowane do Kotlin
 }
 
 android {
@@ -94,6 +95,8 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(platform("org.jetbrains.kotlinx:kotlinx-serialization-bom:1.7.3"))
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json")
 
     // Testy
     testImplementation(libs.junit)

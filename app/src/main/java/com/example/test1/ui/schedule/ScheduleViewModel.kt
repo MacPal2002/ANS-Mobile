@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import javax.inject.Inject
 
 
@@ -23,14 +24,16 @@ class ScheduleViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ScheduleState())
     val uiState: StateFlow<ScheduleState> = _uiState.asStateFlow()
 
+    private var scheduleFetchJob: Job? = null
+    private var groupsListenerJob: Job? = null
+
 
     override fun onUserLoggedIn(userId: String) {
         listenForObservedGroupsChanges()
     }
 
     override fun onUserLoggedOut() {
-        // Anulujemy listener i resetujemy stan UI
-        groupsListenerJob?.cancel()
+        super.onUserLoggedOut()
         _uiState.update { ScheduleState() }
     }
 
@@ -40,7 +43,7 @@ class ScheduleViewModel @Inject constructor(
      */
     private fun listenForObservedGroupsChanges() {
         groupsListenerJob?.cancel()
-        groupsListenerJob = viewModelScope.launch {
+        groupsListenerJob = launchCancellable {
             repository.getObservedGroupsFlow().collect { result ->
                 result.onSuccess { groups ->
                     val currentSelectedId = _uiState.value.selectedGroupId
@@ -82,8 +85,8 @@ class ScheduleViewModel @Inject constructor(
             }
             return
         }
-
-        viewModelScope.launch {
+        scheduleFetchJob?.cancel()
+        scheduleFetchJob = launchCancellable {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
             repository.getDailySchedule(groupId, state.selectedDate)

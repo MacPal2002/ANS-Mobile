@@ -7,6 +7,7 @@ import com.example.test1.data.repository.ScheduleRepository
 import com.example.test1.data.repository.SettingsRepository
 import com.example.test1.ui.auth.BaseAuthViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +25,8 @@ class SettingsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SettingsState())
     val uiState: StateFlow<SettingsState> = _uiState.asStateFlow()
 
+    private var groupsListenerJob: Job? = null
+    private var dataLoadingJob: Job? = null
 
     init {
         collectTheme()
@@ -34,16 +37,19 @@ class SettingsViewModel @Inject constructor(
     }
 
     override fun onUserLoggedOut() {
-        dataLoadingJob?.cancel()
-        groupsListenerJob?.cancel()
+        super.onUserLoggedOut()
         _uiState.update { currentState ->
             SettingsState(themeOption = currentState.themeOption)
         }
     }
 
     private fun loadInitialUserData(userId: String) {
+        if (_uiState.value.isInitialDataLoaded) {
+            return // Jeśli tak, nie rób nic
+        }
+
         dataLoadingJob?.cancel()
-        dataLoadingJob = viewModelScope.launch {
+        dataLoadingJob = launchCancellable {
             _uiState.update { it.copy(isLoading = true) }
 
             val result = settingsRepository.getUserData(userId)
@@ -56,7 +62,8 @@ class SettingsViewModel @Inject constructor(
                         albumNumber = user.albumNumber,
                         notificationsEnabled = user.notificationsEnabled,
                         notificationTimeOption = user.notificationTimeOption,
-                        isLoading = false
+                        isLoading = false,
+                        isInitialDataLoaded = true
                     )
                 }
             } else {
@@ -74,7 +81,7 @@ class SettingsViewModel @Inject constructor(
 
     private fun listenForObservedGroupsChanges() {
         groupsListenerJob?.cancel()
-        groupsListenerJob = viewModelScope.launch {
+        groupsListenerJob = launchCancellable {
             scheduleRepository.getObservedGroupsFlow().collect { result ->
                 result.onSuccess { groups ->
                     _uiState.update {
@@ -154,4 +161,5 @@ class SettingsViewModel @Inject constructor(
     fun setErrorMessage(message: String) {
         _uiState.update { it.copy(errorMessage = message) }
     }
+
 }

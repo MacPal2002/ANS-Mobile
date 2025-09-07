@@ -1,7 +1,7 @@
 package com.example.test1.ui.settings.groupSelection
 
 import androidx.lifecycle.ViewModel
-import com.example.test1.data.GroupNode
+import com.example.test1.data.models.GroupNode
 import androidx.lifecycle.viewModelScope
 import com.example.test1.data.repository.ScheduleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +22,7 @@ data class GroupSelectionState(
 
 @HiltViewModel
 class GroupSelectionViewModel @Inject constructor(
-    private val repository: ScheduleRepository
+    private val scheduleRepository: ScheduleRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GroupSelectionState())
@@ -36,12 +36,12 @@ class GroupSelectionViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             // 1. Pobierz aktualnie obserwowane grupy
-            repository.getObservedGroupIds().onSuccess { ids ->
+            scheduleRepository.getObservedGroupIds().onSuccess { ids ->
                 _uiState.update { it.copy(selectedGroupIds = ids.toSet()) }
             }.onFailure { /* obsłuż błąd */ }
 
             // 2. Pobierz całe drzewo grup
-            repository.getAllDeanGroups().onSuccess { tree ->
+            scheduleRepository.getAllDeanGroups().onSuccess { tree ->
                 _uiState.update { it.copy(isLoading = false, allGroupsTree = tree) }
             }.onFailure { error ->
                 _uiState.update { it.copy(isLoading = false, error = "Błąd: ${error.message}") }
@@ -61,7 +61,7 @@ class GroupSelectionViewModel @Inject constructor(
 
     fun onSaveSelection() {
         viewModelScope.launch {
-            repository.saveObservedGroups(_uiState.value.selectedGroupIds.toList()).onSuccess {
+            scheduleRepository.saveObservedGroups(_uiState.value.selectedGroupIds.toList()).onSuccess {
                 // Sukces - można nawigować wstecz lub pokazać komunikat
             }.onFailure { error ->
                 _uiState.update { it.copy(error = "Błąd zapisu: ${error.message}") }

@@ -8,7 +8,6 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import com.example.test1.data.local.AppDatabase
 import com.example.test1.data.local.ScheduleItemDao
-import com.example.test1.data.repository.SettingsRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -68,9 +67,4 @@ object AppModule {
         return db.scheduleDao()
     }
 
-    @Provides
-    @Singleton
-    fun provideSettingsRepository(dataStore: DataStore<Preferences>): SettingsRepository {
-        return SettingsRepository(dataStore)
-    }
 }

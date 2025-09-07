@@ -23,14 +23,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.test1.ui.component.AppTopBar
-import com.example.test1.ui.component.CreativeAppInfoCard
-import com.example.test1.ui.component.ProfileHeader
 import com.example.test1.ui.component.SectionHeader
-import com.example.test1.ui.component.SettingsClickableRow
-import com.example.test1.ui.component.SettingsOptionPickerDialog
-import com.example.test1.ui.component.SettingsSection
-import com.example.test1.ui.component.SettingsToggleRow
 import com.example.test1.util.checkNotificationPermission
+import com.example.test1.ui.settings.components.SettingsSection
+import com.example.test1.ui.settings.components.SettingsClickableRow
+import com.example.test1.ui.settings.components.SettingsOptionPickerDialog
+import com.example.test1.ui.settings.components.SettingsToggleRow
+import com.example.test1.ui.settings.components.ProfileHeader
+import com.example.test1.ui.settings.components.CreativeAppInfoCard
 
 
 val destructiveColor = Color(0xFFD32F2F)/**/

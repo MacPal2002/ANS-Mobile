@@ -1,4 +1,4 @@
-package com.example.test1.ui.register
+package com.example.test1.ui.auth.register
 
 
 enum class RegisterStatus {

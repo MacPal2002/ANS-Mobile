@@ -7,9 +7,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.test1.ui.settings.SettingsScreen
-import com.example.test1.ui.register.RegisterScreen
+import com.example.test1.ui.auth.register.RegisterScreen
 import com.example.test1.ui.schedule.ScheduleScreen
-import com.example.test1.ui.login.LoginScreen
+import com.example.test1.ui.auth.login.LoginScreen
 import com.example.test1.ui.settings.groupSelection.GroupSelectionScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth

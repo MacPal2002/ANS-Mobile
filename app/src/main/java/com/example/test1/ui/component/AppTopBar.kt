@@ -23,8 +23,6 @@ fun AppTopBar(
     actionIcon: ImageVector? = null,
     onActionClick: (() -> Unit)? = null
 ) {
-/*    val primaryColor = Color(0xFF212C5D)
-    val secondaryColor = Color(0xFFE8EAF6)*/
 
     Column(modifier = modifier.fillMaxWidth()) {
         Surface(

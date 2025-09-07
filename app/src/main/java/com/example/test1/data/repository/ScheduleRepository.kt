@@ -1,8 +1,8 @@
 package com.example.test1.data.repository
 
 import android.util.Log
-import com.example.test1.data.GroupNode
-import com.example.test1.data.ObservedGroup
+import com.example.test1.data.models.GroupNode
+import com.example.test1.data.models.ObservedGroup
 import com.example.test1.data.local.ScheduleItem
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldPath
@@ -15,12 +15,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import com.example.test1.data.local.ScheduleItemDao
+import com.example.test1.data.models.ResultObject
+import com.example.test1.util.castList
+import com.example.test1.util.toTimestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.FirebaseFunctions
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.serialization.json.Json
+import org.json.JSONObject
 
 @Singleton
 class ScheduleRepository @Inject constructor(
@@ -30,7 +35,11 @@ class ScheduleRepository @Inject constructor(
     private val auth: FirebaseAuth
 ) {
 
-    // NOWA, REAKTYWNA FUNKCJA - NASZE GŁÓWNE NARZĘDZIE
+    private val jsonParser = Json {
+        ignoreUnknownKeys = true // Ignoruje nieznane pola w JSON
+        isLenient = true         // Pozwala na pewne luźniejsze formatowanie JSON
+    }
+
     fun getObservedGroupsFlow(): Flow<Result<List<ObservedGroup>>> = callbackFlow {
         val userId = auth.currentUser?.uid
         if (userId == null) {
@@ -39,7 +48,7 @@ class ScheduleRepository @Inject constructor(
             return@callbackFlow
         }
 
-        val listenerRegistration = firestore.collection("students").document(userId)
+        val listenerRegistration = firestore.collection("student_observed_groups").document(userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("DEBUG", "Listener error: ", error) // LOG BŁĘDU
@@ -52,13 +61,10 @@ class ScheduleRepository @Inject constructor(
                     // LOG 1: Sprawdzamy, co jest w całym dokumencie
                     Log.d("DEBUG", "Snapshot received. Data: ${snapshot.data}")
 
-                    val rawData = snapshot.get("observedGroups")
-                    // LOG 2: Sprawdzamy, co dokładnie jest w polu 'observedGroups' i jakiego jest typu
-                    Log.d("DEBUG", "Raw 'observedGroups' data: $rawData, Type: ${rawData?.javaClass?.name}")
+                    val rawData = snapshot.get("groups")
 
                     val groupIds = (rawData as? List<*>)
                         ?.mapNotNull { item ->
-                            // LOG 3: Sprawdzamy każdy element w liście przed konwersją
                             Log.d("DEBUG", "Processing item: $item, Type: ${item?.javaClass?.name}")
                             // Używamy bezpieczniejszego bloku 'when' do konwersji
                             when (item) {
@@ -68,14 +74,9 @@ class ScheduleRepository @Inject constructor(
                         }
                         ?: emptyList()
 
-                    // LOG 4: Sprawdzamy, co udało się sparsować
-                    Log.d("DEBUG", "Parsed groupIds: $groupIds")
-
                     if (groupIds.isNotEmpty()) {
                         launch {
                             val detailsResult = getGroupDetails(groupIds)
-                            // LOG 5: Sprawdzamy, czy udało się pobrać szczegóły grup
-                            Log.d("DEBUG", "getGroupDetails result: $detailsResult")
                             trySend(detailsResult)
                         }
                     } else {
@@ -94,7 +95,7 @@ class ScheduleRepository @Inject constructor(
         return try {
             if (groupIds.isEmpty()) return Result.success(emptyList())
 
-            val documents = firestore.collection("groupDetails")
+            val documents = firestore.collection("group_details")
                 .whereIn(FieldPath.documentId(), groupIds.map { it.toString() })
                 .get()
                 .await()
@@ -118,34 +119,45 @@ class ScheduleRepository @Inject constructor(
     suspend fun getAllDeanGroups(): Result<List<GroupNode>> {
         return try {
             val result = functions.getHttpsCallable("getAllDeanGroups").call().await()
-            val treeData = (result.data as? Map<*, *>)?.get("tree") as? List<Map<String, Any>>
-            val groupTree = mapToGroupTree(treeData ?: emptyList())
-            Result.success(groupTree)
-        } catch (e: Exception) {
-            if (e is FirebaseFunctionsException &&
-                (e.code == FirebaseFunctionsException.Code.UNAVAILABLE || e.code == FirebaseFunctionsException.Code.INTERNAL)) {
 
+            val dataMap = result.data as? Map<*, *>
+            if (dataMap != null) {
+                val jsonString = JSONObject(dataMap).toString()
+
+                // --- TUTAJ DODAJESZ LOGOWANIE ---
+                // "ServerResponse" to tag, po którym łatwo znajdziesz log w Logcat.
+                Log.d("ServerResponse", "Odpowiedź z getAllDeanGroups: $jsonString")
+                // ------------------------------------
+
+                val resultObject = jsonParser.decodeFromString<ResultObject>(jsonString)
+                val groupTree = resultObject.tree
+
+                Result.success(groupTree)
+            } else {
+                // Możesz też zalogować, gdy dane są puste
+                Log.w("ServerResponse", "Otrzymano puste (null) dane z serwera.")
+                Result.failure(Exception("Otrzymano puste lub niepoprawne dane."))
+            }
+
+        } catch (e: Exception) {
+            // Dobrą praktyką jest też logowanie samego błędu
+            Log.e("ServerResponse", "Błąd podczas pobierania danych: ", e)
+
+            // Twoja obsługa błędów pozostaje bez zmian
+            if (e is kotlinx.serialization.SerializationException) {
+                Result.failure(Exception("Błąd przetwarzania danych z serwera: ${e.message}"))
+            } else if (e is FirebaseFunctionsException &&
+                (e.code == FirebaseFunctionsException.Code.UNAVAILABLE || e.code == FirebaseFunctionsException.Code.INTERNAL)) {
                 Result.failure(Exception("Brak połączenia z internetem. Sprawdź sieć i spróbuj ponownie."))
             } else {
-                // Dla wszystkich innych błędów, zwracamy oryginalny komunikat
                 Result.failure(e)
             }
-        }
-    }
-    private fun mapToGroupTree(data: List<Map<String, Any>>): List<GroupNode> {
-        return data.map { nodeMap ->
-            GroupNode(
-                id = nodeMap["id"].toString(),
-                name = nodeMap["name"] as? String ?: "",
-                type = nodeMap["type"] as? String ?: "",
-                children = mapToGroupTree(nodeMap["children"] as? List<Map<String, Any>> ?: emptyList())
-            )
         }
     }
     suspend fun saveObservedGroups(groupIds: List<Int>): Result<Unit> {
         val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Użytkownik nie jest zalogowany."))
         return try {
-            firestore.collection("students").document(userId).update("observedGroups", groupIds).await()
+            firestore.collection("student_observed_groups").document(userId).update("groups", groupIds).await()
             Result.success(Unit)
         } catch (e: Exception) {
             if (e is FirebaseFunctionsException &&
@@ -163,13 +175,11 @@ class ScheduleRepository @Inject constructor(
     suspend fun getObservedGroupIds(): Result<List<Int>> {
         val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Użytkownik nie jest zalogowany."))
         return try {
-            val document = firestore.collection("students").document(userId).get().await()
-            // Pobierz surowe dane z pola "observedGroups"
-            val rawData = document.get("observedGroups")
+            val document = firestore.collection("student_observed_groups").document(userId).get().await()
+            val rawData = document.get("groups")
 
-            // Bezpiecznie rzutuj na listę i od razu zmapuj na List<Int>
             val groupIds = (rawData as? List<*>)
-                ?.mapNotNull { (it as? Long)?.toInt() } // Ta sama logika mapowania co wcześniej
+                ?.mapNotNull { (it as? Long)?.toInt() }
                 ?: emptyList()
 
             Result.success(groupIds)
@@ -198,7 +208,7 @@ class ScheduleRepository @Inject constructor(
 
         // 2. Spróbuj pobrać świeże dane z sieci w tle
         try {
-            val remoteSchedule = fetchFromFirebase(groupId, date)
+            val remoteSchedule = fetchScheduleFromFirebase(groupId, date)
 
             // 3. Zaktualizuj bazę danych
             scheduleDao.deleteScheduleByGroupAndDate(groupId, date)
@@ -222,7 +232,7 @@ class ScheduleRepository @Inject constructor(
     /**
      * Prywatna funkcja do pobierania danych bezpośrednio z Firebase Cloud Functions.
      */
-    private suspend fun fetchFromFirebase(groupId: Int, date: LocalDate): List<ScheduleItem> {
+    private suspend fun fetchScheduleFromFirebase(groupId: Int, date: LocalDate): List<ScheduleItem> {
         val dateString = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
         val data = hashMapOf(
             "groupId" to groupId,
@@ -234,25 +244,20 @@ class ScheduleRepository @Inject constructor(
             .call(data)
             .await()
 
-        val scheduleData = (result.data as? Map<*, *>)?.get("schedule") as? List<Map<String, Any>>
-        return scheduleData?.map { mapToScheduleItem(it, groupId, date) } ?: emptyList()
+        // Bezpieczne rzutowanie elementów listy
+        val scheduleData = (result.data as? Map<*, *>)?.get("schedule")
+            .castList<Map<String, Any>>()
+
+        return scheduleData.map { mapToScheduleItem(it, groupId, date) }
     }
+
 
     /**
      * Mapuje surowe dane (Map) z Firebase na obiekt encji ScheduleItem.
      */
     private fun mapToScheduleItem(data: Map<String, Any>, groupId: Int, date: LocalDate): ScheduleItem {
-        val startTimeMap = data["startTime"] as? Map<String, Number> ?: emptyMap()
-        val endTimeMap = data["endTime"] as? Map<String, Number> ?: emptyMap()
-
-        val startTime = Timestamp(
-            startTimeMap["_seconds"]?.toLong() ?: 0L,
-            startTimeMap["_nanoseconds"]?.toInt() ?: 0
-        )
-        val endTime = Timestamp(
-            endTimeMap["_seconds"]?.toLong() ?: 0L,
-            endTimeMap["_nanoseconds"]?.toInt() ?: 0
-        )
+        val startTime = (data["startTime"] as? Map<*, *>)?.toTimestamp() ?: Timestamp.now()
+        val endTime = (data["endTime"] as? Map<*, *>)?.toTimestamp() ?: Timestamp.now()
 
         return ScheduleItem(
             groupId = groupId,
@@ -261,10 +266,12 @@ class ScheduleRepository @Inject constructor(
             classType = data["classType"] as? String,
             startTime = startTime,
             endTime = endTime,
-            lecturers = data["lecturers"] as? List<Map<String, Any>> ?: emptyList(),
-            rooms = data["rooms"] as? List<Map<String, Any>> ?: emptyList()
+            lecturers = (data["lecturers"]).castList<Map<String, Any>>(),
+            rooms = (data["rooms"]).castList<Map<String, Any>>()
         )
     }
+
+
 
     /**
      * Centralna funkcja do obsługi błędów z Firebase.

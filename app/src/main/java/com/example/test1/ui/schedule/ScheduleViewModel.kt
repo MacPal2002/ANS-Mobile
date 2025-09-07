@@ -1,47 +1,37 @@
 package com.example.test1.ui.schedule
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.test1.data.repository.AuthRepository
 import com.example.test1.data.repository.ScheduleRepository
+import com.example.test1.ui.auth.BaseAuthViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import javax.inject.Inject
 
 
 @HiltViewModel
 class ScheduleViewModel @Inject constructor(
-    private val repository: ScheduleRepository
-) : ViewModel() {
+    private val repository: ScheduleRepository,
+    authRepository: AuthRepository
+) : BaseAuthViewModel(authRepository) {
 
     private val _uiState = MutableStateFlow(ScheduleState())
     val uiState: StateFlow<ScheduleState> = _uiState.asStateFlow()
 
-    private val auth = Firebase.auth
 
-    // KROK 1: Dodajemy pole do przechowywania naszego zadania nasłuchującego
-    private var groupsListenerJob: Job? = null
-
-    private val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
-        if (firebaseAuth.currentUser != null) {
-            listenForObservedGroupsChanges()
-        } else {
-            // KROK 3: Anulujemy nasłuchiwanie PRZED zresetowaniem stanu
-            groupsListenerJob?.cancel()
-            _uiState.update { ScheduleState() }
-        }
+    override fun onUserLoggedIn(userId: String) {
+        listenForObservedGroupsChanges()
     }
 
-    init {
-        auth.addAuthStateListener(authStateListener)
+    override fun onUserLoggedOut() {
+        // Anulujemy listener i resetujemy stan UI
+        groupsListenerJob?.cancel()
+        _uiState.update { ScheduleState() }
     }
 
     /**
@@ -49,9 +39,7 @@ class ScheduleViewModel @Inject constructor(
      * Wywoływana po zalogowaniu i reaguje na każdą zmianę w Firestore.
      */
     private fun listenForObservedGroupsChanges() {
-        // Anuluj poprzednie nasłuchiwanie, jeśli jakieś było aktywne
         groupsListenerJob?.cancel()
-        // KROK 2: Zapisujemy nowe zadanie nasłuchiwania do naszego pola
         groupsListenerJob = viewModelScope.launch {
             repository.getObservedGroupsFlow().collect { result ->
                 result.onSuccess { groups ->
@@ -74,22 +62,6 @@ class ScheduleViewModel @Inject constructor(
                 }
             }
         }
-    }
-
-    /**
-     * Publiczna funkcja wywoływana z UI po zmianie daty.
-     */
-    fun onDateSelected(newDate: LocalDate) {
-        _uiState.update { it.copy(selectedDate = newDate) }
-        fetchScheduleForCurrentState()
-    }
-
-    /**
-     * Publiczna funkcja wywoływana z UI po zmianie grupy w dropdownie.
-     */
-    fun onGroupSelected(groupId: Int) {
-        _uiState.update { it.copy(selectedGroupId = groupId) }
-        fetchScheduleForCurrentState()
     }
 
     /**
@@ -117,7 +89,6 @@ class ScheduleViewModel @Inject constructor(
             repository.getDailySchedule(groupId, state.selectedDate)
                 .collect { result ->
                     result.onSuccess { scheduleItems ->
-                        // Sukces: aktualizujemy plan i czyścimy ewentualny stary błąd
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -139,17 +110,24 @@ class ScheduleViewModel @Inject constructor(
         }
     }
 
-    fun onErrorShown() {
-        _uiState.update { it.copy(errorMessage = null) }
+    /**
+     * Publiczna funkcja wywoływana z UI po zmianie daty.
+     */
+    fun onDateSelected(newDate: LocalDate) {
+        _uiState.update { it.copy(selectedDate = newDate) }
+        fetchScheduleForCurrentState()
     }
 
     /**
-     * Ważne: Zawsze usuwaj listenery, aby uniknąć wycieków pamięci.
+     * Publiczna funkcja wywoływana z UI po zmianie grupy w dropdownie.
      */
-    override fun onCleared() {
-        super.onCleared()
-        auth.removeAuthStateListener(authStateListener)
-        groupsListenerJob?.cancel()
+    fun onGroupSelected(groupId: Int) {
+        _uiState.update { it.copy(selectedGroupId = groupId) }
+        fetchScheduleForCurrentState()
+    }
+
+    fun onErrorShown() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 }
 

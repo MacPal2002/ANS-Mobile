@@ -1,11 +1,12 @@
 package com.example.test1.ui.settings
 
 import android.os.Build
+import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.example.test1.data.repository.AuthRepository
 import com.example.test1.data.repository.ScheduleRepository
 import com.example.test1.data.repository.SettingsRepository
-import com.example.test1.ui.auth.BaseAuthViewModel
+import com.example.test1.ui.base.AuthenticatedViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,7 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val scheduleRepository: ScheduleRepository,
     private val authRepository: AuthRepository
-) : BaseAuthViewModel(authRepository) {
+) : AuthenticatedViewModel(authRepository) {
 
     private val _uiState = MutableStateFlow(SettingsState())
     val uiState: StateFlow<SettingsState> = _uiState.asStateFlow()
@@ -29,6 +30,7 @@ class SettingsViewModel @Inject constructor(
     private var dataLoadingJob: Job? = null
 
     init {
+        Log.d("SettingsViewModel", "ViewModel CREATED")
         collectTheme()
     }
 

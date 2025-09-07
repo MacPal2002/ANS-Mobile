@@ -1,4 +1,4 @@
-package com.example.test1.ui.login
+package com.example.test1.ui.auth.login
 
 // Definicja możliwych stanów ekranu
 enum class LoginStatus {

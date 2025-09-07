@@ -1,12 +1,12 @@
-package com.example.test1.ui.register
+package com.example.test1.ui.auth.register
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -119,14 +120,23 @@ fun RegisterScreen(
                 }
                 pop()
             }
-            ClickableText(
+
+            var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+            Text(
                 text = annotatedText,
-                onClick = {
-                    if (uiState.status == RegisterStatus.IDLE || uiState.status == RegisterStatus.ERROR) {
-                        annotatedText.getStringAnnotations("LOGIN", it, it)
-                            .firstOrNull()?.let {
-                                onNavigateToLogin()
+                onTextLayout = { layoutResult = it },
+                modifier = Modifier.pointerInput(Unit) {
+                    detectTapGestures { offsetPosition ->
+                        layoutResult?.let { layout ->
+                            val offset = layout.getOffsetForPosition(offsetPosition)
+                            if (uiState.status == RegisterStatus.IDLE || uiState.status == RegisterStatus.ERROR) {
+                                annotatedText.getStringAnnotations("LOGIN", offset, offset)
+                                    .firstOrNull()?.let {
+                                        onNavigateToLogin()
+                                    }
                             }
+                        }
                     }
                 }
             )

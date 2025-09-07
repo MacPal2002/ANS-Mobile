@@ -1,21 +1,21 @@
-package com.example.test1.ui.register
+package com.example.test1.ui.auth.register
 
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
-import com.google.firebase.functions.FirebaseFunctions
+import androidx.lifecycle.viewModelScope
+import com.example.test1.data.models.RegisterData
+import com.example.test1.data.repository.AuthRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
-    private val functions: FirebaseFunctions,
+    private val authRepository: AuthRepository
 
 ) : ViewModel() {
 
@@ -82,22 +82,17 @@ class RegisterViewModel @Inject constructor(
             _uiState.update { it.copy(status = RegisterStatus.LOADING) }
 
             val currentState = _uiState.value
-            val data = hashMapOf(
-                "email" to currentState.email,
-                "password" to currentState.password,
-                "albumNumber" to currentState.albumNumber,
-                "verbisPassword" to currentState.verbisPassword
+            val data = RegisterData(
+                email = currentState.email,
+                password = currentState.password,
+                albumNumber = currentState.albumNumber,
+                verbisPassword = currentState.verbisPassword
             )
 
-            try {
-                functions
-                    .getHttpsCallable("registerStudent")
-                    .call(data)
-                    .await()
-
+            authRepository.registerStudent(data).onSuccess {
                 _uiState.update { it.copy(status = RegisterStatus.SUCCESS) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(status = RegisterStatus.ERROR, error = e.message) }
+            }.onFailure { exception ->
+                _uiState.update { it.copy(status = RegisterStatus.ERROR, error = exception.message) }
             }
         }
     }

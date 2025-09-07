@@ -1,4 +1,4 @@
-package com.example.test1.ui.login
+package com.example.test1.ui.auth.login
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -6,9 +6,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
@@ -21,6 +21,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -196,12 +197,21 @@ fun LoginScreen(
                     pop()
                 }
 
-                ClickableText(
+                var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+                Text(
                     text = annotatedText,
-                    onClick = { offset -> annotatedText.getStringAnnotations("REGISTER", offset, offset)
-                                .firstOrNull()?.let {
-                                    onNavigateToRegister()
-                                }
+                    onTextLayout = { layoutResult = it },
+                    modifier = Modifier.pointerInput(Unit) {
+                        detectTapGestures { offsetPosition ->
+                            layoutResult?.let { layout ->
+                                val offset = layout.getOffsetForPosition(offsetPosition)
+                                annotatedText.getStringAnnotations("REGISTER", offset, offset)
+                                    .firstOrNull()?.let {
+                                        onNavigateToRegister()
+                                    }
+                            }
+                        }
                     }
                 )
             }

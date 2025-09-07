@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.test1.data.models.GroupNode
 import com.example.test1.ui.component.AppTopBar
-import com.example.test1.ui.settings.destructiveColor
+import com.example.test1.ui.theme.destructiveColor
 
 @Composable
 fun GroupSelectionScreen(

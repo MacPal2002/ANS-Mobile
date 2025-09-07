@@ -3,6 +3,7 @@ package com.example.test1.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.test1.data.repository.AuthRepository
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -10,12 +11,19 @@ abstract class BaseAuthViewModel(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    // Definiujemy joby, które mogą być używane przez dziedziczące ViewModel'e
-    protected var dataLoadingJob: Job? = null
-    protected var groupsListenerJob: Job? = null
+    protected val jobs = mutableListOf<Job>()
+
 
     init {
         observeAuthState()
+    }
+
+    /**
+     * Uruchamia korutynę i automatycznie dodaje ją do listy
+     * zadań, które zostaną anulowane w onCleared().
+     */
+    protected fun launchCancellable(block: suspend CoroutineScope.() -> Unit): Job {
+        return viewModelScope.launch(block = block).also { jobs.add(it) }
     }
 
     /**
@@ -42,10 +50,14 @@ abstract class BaseAuthViewModel(
     protected abstract fun onUserLoggedIn(userId: String)
 
     /**
-     * Ta funkcja musi zostać zaimplementowana przez ViewModel-dziecko.
-     * Określa, co ma się stać po wylogowaniu.
+     * Ta funkcja ma teraz domyślną implementację.
+     * Anuluje wszystkie zadania i czyści listę po wylogowaniu.
+     * Jest 'open', więc dzieci mogą dodać swoją logikę (np. reset UI).
      */
-    protected abstract fun onUserLoggedOut()
+    protected open fun onUserLoggedOut() {
+        jobs.forEach { it.cancel() }
+        jobs.clear()
+    }
 
     /**
      * Anuluje wszystkie aktywne zadania, gdy ViewModel jest niszczony,
@@ -53,7 +65,7 @@ abstract class BaseAuthViewModel(
      */
     override fun onCleared() {
         super.onCleared()
-        dataLoadingJob?.cancel()
-        groupsListenerJob?.cancel()
+        jobs.forEach { it.cancel() }
+        jobs.clear()
     }
 }

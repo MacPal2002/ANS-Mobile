@@ -33,7 +33,6 @@ import com.example.test1.ui.settings.components.ProfileHeader
 import com.example.test1.ui.settings.components.CreativeAppInfoCard
 
 
-val destructiveColor = Color(0xFFD32F2F)/**/
 @Composable
 fun SettingsScreen(
     settingsViewModel: SettingsViewModel = hiltViewModel(),

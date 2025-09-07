@@ -1,6 +1,7 @@
 package com.example.test1.ui.settings
 
 data class SettingsState(
+    val isInitialDataLoaded: Boolean = false,
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val displayName: String = "Ładowanie...",

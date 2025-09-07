@@ -1,14 +1,12 @@
 package com.example.test1.ui.schedule
 
-import androidx.lifecycle.viewModelScope
 import com.example.test1.data.repository.AuthRepository
 import com.example.test1.data.repository.ScheduleRepository
-import com.example.test1.ui.auth.BaseAuthViewModel
+import com.example.test1.ui.base.AuthenticatedViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -19,7 +17,7 @@ import javax.inject.Inject
 class ScheduleViewModel @Inject constructor(
     private val repository: ScheduleRepository,
     authRepository: AuthRepository
-) : BaseAuthViewModel(authRepository) {
+) : AuthenticatedViewModel(authRepository) {
 
     private val _uiState = MutableStateFlow(ScheduleState())
     val uiState: StateFlow<ScheduleState> = _uiState.asStateFlow()

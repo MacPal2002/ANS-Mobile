@@ -1,49 +1,43 @@
 package com.example.test1.ui.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.test1.ui.auth.AppAuthViewModel
 import com.example.test1.ui.settings.SettingsScreen
 import com.example.test1.ui.auth.register.RegisterScreen
 import com.example.test1.ui.schedule.ScheduleScreen
 import com.example.test1.ui.auth.login.LoginScreen
+import com.example.test1.ui.settings.SettingsViewModel
 import com.example.test1.ui.settings.groupSelection.GroupSelectionScreen
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    val firebaseAuth = remember { Firebase.auth }
+    val appAuthViewModel: AppAuthViewModel = hiltViewModel()
 
-    DisposableEffect(key1 = navController) {
-        // Tworzymy listener
-        val authStateListener = FirebaseAuth.AuthStateListener { auth ->
-            // Pobieramy aktualną ścieżkę w nawigacji
-            val currentRoute = navController.currentBackStackEntry?.destination?.route
+    val isLoggedIn by appAuthViewModel.isLoggedIn.collectAsState()
 
-            // Jeśli użytkownik jest null (wylogowany) I nie jesteśmy już na ekranie logowania lub rejestracji
-            if (auth.currentUser == null && currentRoute != "login" && currentRoute != "register") {
-                navController.navigate("login") {
-                    popUpTo(navController.graph.startDestinationId) {
-                        inclusive = true
-                    }
+    LaunchedEffect(isLoggedIn) {
+        val currentRoute = navController.currentBackStackEntry?.destination?.route
+
+        // Jeśli stan zmienił się na "wylogowany" i nie jesteśmy na ekranie logowania/rejestracji
+        if (!isLoggedIn && currentRoute != "login" && currentRoute != "register") {
+            navController.navigate("login") {
+                popUpTo(navController.graph.startDestinationId) {
+                    inclusive = true
                 }
             }
         }
-
-        firebaseAuth.addAuthStateListener(authStateListener)
-
-        onDispose {
-            firebaseAuth.removeAuthStateListener(authStateListener)
-        }
     }
-    val startDestination = if (Firebase.auth.currentUser != null) {
+    val startDestination = if (appAuthViewModel.isInitiallyLoggedIn) {
         "schedule"
     } else {
         "login"
@@ -87,8 +81,13 @@ fun AppNavigation() {
         }
 
         // Definicja ekranu rejestracji
-        composable("settings") {
+        composable("settings") { backStackEntry ->
+            val navGraphBackStackEntry = remember(backStackEntry) {
+                navController.getBackStackEntry(navController.graph.id)
+            }
+            val settingsViewModel: SettingsViewModel = hiltViewModel(navGraphBackStackEntry)
             SettingsScreen(
+                settingsViewModel = settingsViewModel,
                 onLogout = {
                     // Po wylogowaniu, wróć do ekranu logowania
                     navController.navigate("login") {

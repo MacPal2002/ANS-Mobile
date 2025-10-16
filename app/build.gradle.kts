@@ -1,10 +1,16 @@
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import java.util.Calendar
 
-fun getGitCommitCount(): Int {
-    return try {
-        "git rev-list --count HEAD".runCommand().toInt()
-    } catch (e: Exception) {
-        System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-    }
+fun generateVersionCodeFromDaysAndMinutes(): Int {
+    val epochStart = LocalDate.of(2024, 1, 1)
+    val today = LocalDate.now()
+    val daysSinceEpoch = ChronoUnit.DAYS.between(epochStart, today).toInt()
+    val now = Calendar.getInstance()
+    val minutesOfDay = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+    val versionCode = (daysSinceEpoch * 1500) + minutesOfDay
+    val offset = 20_000_000
+    return versionCode + offset
 }
 
 fun getGitVersionName(): String {
@@ -45,24 +51,10 @@ android {
         applicationId = "com.example.test1"
         minSdk = 29
         targetSdk = 35
-        versionCode = getGitCommitCount()
-        //versionCode = 1
-        //versionName = "0.1.0"
+        versionCode = generateVersionCodeFromDaysAndMinutes()
         versionName = getGitVersionName()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-
-    /*signingConfigs {
-        create("release") {
-            val storeFilePath = project.findProperty("RELEASE_STORE_FILE") as String?
-            if (storeFilePath != null) {
-                storeFile = file(storeFilePath)
-            }
-            storePassword = project.findProperty("RELEASE_STORE_PASSWORD") as String? ?: ""
-            keyAlias = project.findProperty("RELEASE_KEY_ALIAS") as String? ?: "my-key-alias"
-            keyPassword = project.findProperty("RELEASE_KEY_PASSWORD") as String? ?: ""
-        }
-    }*/
     signingConfigs {
         create("release") {
             // Sprawdź, czy właściwość została przekazana przez GitHub Actions z flagą -P

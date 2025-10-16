@@ -1,12 +1,41 @@
+
+fun getGitCommitCount(): Int {
+    return try {
+        "git rev-list --count HEAD".runCommand().toInt()
+    } catch (e: Exception) {
+        System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+    }
+}
+
+fun getGitVersionName(): String {
+    return try {
+        "git describe --tags --abbrev=0".runCommand()
+    } catch (e: Exception) {
+        "0.1.0"
+    }
+}
+
+fun String.runCommand(): String {
+    val parts = this.split("\\s".toRegex())
+    val process = ProcessBuilder(parts)
+        .redirectOutput(ProcessBuilder.Redirect.PIPE)
+        .redirectError(ProcessBuilder.Redirect.PIPE)
+        .start()
+
+    process.waitFor()
+    return process.inputStream.bufferedReader().readText().trim()
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
     alias(libs.plugins.hilt.gradle.plugin)
-    id("com.google.devtools.ksp") version "2.0.21-1.0.25" // <-- jawnie ta sama wersja co w libs.versions.toml
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21" // <-- dopasowane do Kotlin
+    id("com.google.devtools.ksp") version "2.0.21-1.0.25"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21"
 }
+
 
 android {
     namespace = "com.example.test1"
@@ -16,30 +45,57 @@ android {
         applicationId = "com.example.test1"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
-
+        versionCode = getGitCommitCount()
+        //versionCode = 1
+        //versionName = "0.1.0"
+        versionName = getGitVersionName()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    /*signingConfigs {
+        create("release") {
+            val storeFilePath = project.findProperty("RELEASE_STORE_FILE") as String?
+            if (storeFilePath != null) {
+                storeFile = file(storeFilePath)
+            }
+            storePassword = project.findProperty("RELEASE_STORE_PASSWORD") as String? ?: ""
+            keyAlias = project.findProperty("RELEASE_KEY_ALIAS") as String? ?: "my-key-alias"
+            keyPassword = project.findProperty("RELEASE_KEY_PASSWORD") as String? ?: ""
+        }
+    }*/
     signingConfigs {
         create("release") {
-            storeFile = file("my-release-key.jks")
-            storePassword = project.property("RELEASE_STORE_PASSWORD") as String
-            keyAlias = "my-key-alias"
-            keyPassword = project.property("RELEASE_KEY_PASSWORD") as String
+            // Sprawdź, czy właściwość została przekazana przez GitHub Actions z flagą -P
+            if (project.hasProperty("signing.keyStore.file")) {
+                // Odczytaj ścieżkę do pliku .jks z właściwości projektu
+                storeFile = file(project.property("signing.keyStore.file") as String)
+
+                // Odczytaj resztę danych ze zmiennych środowiskowych (tak jak przekazuje je `env:` w workflow)
+                storePassword = System.getenv("KEY_STORE_PASSWORD")
+                keyAlias = System.getenv("ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
         }
     }
 
     buildTypes {
         getByName("release") {
+            if (signingConfigs.getByName("release").storeFile != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            // signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            applicationVariants.all {
+                outputs.all {
+                    val outputFileName = "app-${versionName}.apk"
+                    (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName = outputFileName
+                }
+            }
         }
     }
     compileOptions {
@@ -97,6 +153,8 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(platform("org.jetbrains.kotlinx:kotlinx-serialization-bom:1.7.3"))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json")
+    implementation("com.github.javiersantos:AppUpdater:2.7"){
+    }
 
     // Testy
     testImplementation(libs.junit)

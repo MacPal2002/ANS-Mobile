@@ -16,6 +16,7 @@ import com.google.firebase.messaging.ktx.messaging
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
+import com.google.firebase.Timestamp
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -45,6 +46,18 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Aktualizuje pole lastLogin w dokumencie użytkownika w kolekcji 'students'.
+     */
+    suspend fun updateLastLogin(userId: String): Result<Unit> = try {
+        val currentTime = Timestamp.now()
+        firestore.collection(STUDENTS_COLLECTION).document(userId)
+            .update("lastLogin", currentTime).await()
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Log.w("SettingsRepository", "Błąd podczas aktualizacji lastLogin", e)
+        Result.failure(e)
+    }
     /**
      * Zapisuje dane urządzenia. Tworzy nowy wpis z domyślnymi ustawieniami
      * lub aktualizuje tylko token, jeśli urządzenie już istnieje.

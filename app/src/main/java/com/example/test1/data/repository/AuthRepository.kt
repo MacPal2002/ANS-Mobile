@@ -55,6 +55,7 @@ class AuthRepository @Inject constructor(
                 ?: return Result.failure(Exception("Nie udało się uzyskać ID użytkownika po zalogowaniu."))
 
             settingsRepository.saveDeviceData(userId)
+            settingsRepository.updateLastLogin(userId)
 
             Result.success(Unit)
         } catch (e: Exception) {

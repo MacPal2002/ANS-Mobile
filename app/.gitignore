@@ -1,1 +1,18 @@
-/build
+# Gradle
+.gradle/
+build/
+
+# Android Studio
+.idea/
+*.iml
+
+# Keystore (podpisywanie APK)
+my-release-key.jks
+
+# Lokalny plik gradle.properties z hasłami
+gradle.properties
+
+# Pliki tymczasowe
+*.log
+*.tmp
+.kotlin/errors/

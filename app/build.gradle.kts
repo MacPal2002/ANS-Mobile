@@ -129,6 +129,7 @@ dependencies {
     implementation(libs.androidx.material.icons.extended.android)
     implementation(libs.androidx.ui.text.google.fonts)
     implementation(libs.androidx.constraintlayout.compose)
+    implementation("androidx.compose.foundation:foundation:1.9.4")
 
     // Room
     implementation(libs.androidx.room.runtime)

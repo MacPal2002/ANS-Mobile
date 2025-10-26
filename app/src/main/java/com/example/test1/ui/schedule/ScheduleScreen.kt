@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -39,8 +40,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.test1.ui.schedule.components.DateHeader
 import com.example.test1.ui.schedule.components.DaySchedule
 import com.example.test1.ui.schedule.components.GroupSelector
-import com.example.test1.ui.schedule.components.HorizontalDayPicker
 import com.example.test1.ui.schedule.components.MonthCalendarDialog
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import com.example.test1.ui.schedule.components.ScrollableWeekRow
+import java.time.temporal.ChronoUnit
 
 data class ScheduleEvent(
     val title: String,
@@ -53,6 +57,29 @@ data class ScheduleEvent(
 // Definicje stałych dla layoutu siatki
 val HourHeight = 80.dp
 const val DayStartHour = 7
+
+private const val TOTAL_PAGES = 10400 // Wystarczy na ~200 lat (52 tygodnie * 200)
+private const val STARTING_PAGE = TOTAL_PAGES / 2
+
+/**
+ * Oblicza indeks strony pagera dla podanej daty.
+ * STARTING_PAGE (np. 5200) odpowiada tygodniowi `referenceDate`.
+ */
+private fun dateToPageIndex(date: LocalDate, referenceDate: LocalDate): Int {
+    val dateWeekStart = date.minusDays(date.dayOfWeek.value.toLong() - 1)
+    val refWeekStart = referenceDate.minusDays(referenceDate.dayOfWeek.value.toLong() - 1)
+    val weeksBetween = ChronoUnit.WEEKS.between(refWeekStart, dateWeekStart)
+    return (STARTING_PAGE + weeksBetween).toInt()
+}
+
+/**
+ * Oblicza datę (poniedziałek) dla podanego indeksu strony pagera.
+ */
+private fun pageIndexToStartDate(page: Int, referenceDate: LocalDate): LocalDate {
+    val refWeekStart = referenceDate.minusDays(referenceDate.dayOfWeek.value.toLong() - 1)
+    val weekOffset = page - STARTING_PAGE
+    return refWeekStart.plusWeeks(weekOffset.toLong())
+}
 
 @Composable
 fun ScheduleScreen(
@@ -78,11 +105,32 @@ fun ScheduleScreen(
             onDismissRequest = { showMonthPicker = false }
         )
     }
+    val referenceDate = remember { LocalDate.now() }
 
-    // Obliczenia zależne od stanu wykonujemy na danych z ViewModelu
-    val weekDays = remember(uiState.selectedDate) {
-        val startOfWeek = uiState.selectedDate.minusDays(uiState.selectedDate.dayOfWeek.value.toLong() - 1)
-        List(7) { i -> startOfWeek.plusDays(i.toLong()) }
+    val pagerState = rememberPagerState(
+        initialPage = dateToPageIndex(uiState.selectedDate, referenceDate),
+        pageCount = { TOTAL_PAGES }
+    )
+    LaunchedEffect(uiState.selectedDate) {
+        val targetPage = dateToPageIndex(uiState.selectedDate, referenceDate)
+        if (targetPage != pagerState.currentPage) {
+            pagerState.animateScrollToPage(targetPage)
+        }
+    }
+    LaunchedEffect(pagerState.isScrollInProgress) {
+        // Reagujemy tylko po zakończeniu przewijania
+        if (!pagerState.isScrollInProgress) {
+            val newWeekStartDate = pageIndexToStartDate(pagerState.currentPage, referenceDate)
+
+            // Zachowaj ten sam dzień tygodnia, który był wybrany, ale w nowym tygodniu
+            val dayOfWeekOffset = uiState.selectedDate.dayOfWeek.value.toLong() - 1
+            val newSelectedDate = newWeekStartDate.plusDays(dayOfWeekOffset)
+
+            // Sprawdź, czy data faktycznie się zmieniła (żeby uniknąć pętli)
+            if (newSelectedDate != uiState.selectedDate) {
+                scheduleViewModel.onDateSelected(newSelectedDate)
+            }
+        }
     }
 
     // Stan dla wskaźnika aktualnego czasu może pozostać lokalny
@@ -155,11 +203,20 @@ fun ScheduleScreen(
                         onGroupSelected = { scheduleViewModel.onGroupSelected(it) }
                     )
                 }
-                HorizontalDayPicker(
-                    dates = weekDays,
-                    selectedDate = uiState.selectedDate,
-                    onDateSelected = { newDate -> scheduleViewModel.onDateSelected(newDate) }
-                )
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxWidth()
+                ) { pageIndex ->
+                    // Oblicz dni dla *tej konkretnej strony*
+                    val pageStartDate = pageIndexToStartDate(pageIndex, referenceDate)
+                    val weekDaysForPage = List(7) { i -> pageStartDate.plusDays(i.toLong()) }
+
+                    ScrollableWeekRow(
+                        dates = weekDaysForPage,
+                        selectedDate = uiState.selectedDate,
+                        onDateSelected = { newDate -> scheduleViewModel.onDateSelected(newDate) }
+                    )
+                }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                 Box(modifier = Modifier.fillMaxSize()) {

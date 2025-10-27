@@ -7,6 +7,7 @@
     <application
         android:name=".ScheduleApp"  android:enableOnBackInvokedCallback="true"
         android:allowBackup="true"
+
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -15,6 +16,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Test1"
         tools:targetApi="33">
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="upcoming_class_channel" />
         <receiver
             android:name=".util.DownloadCompletedReceiver"
             android:exported="true">

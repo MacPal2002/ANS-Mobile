@@ -1,6 +1,5 @@
 name: Build and Release APK
 
-# URUCHAMIAJ WORKFLOW TYLKO PO WYPCHNIĘCIU TAGA
 on:
   push:
     tags:
@@ -14,9 +13,51 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
+          fetch-depth: 0
+          
+      - name: Generate google-services.json
+        run: |
+          mkdir -p app/src/debug
+          mkdir -p app/src/release
 
-      # Reszta kroków (Cache, Set up JDK, Build APK) pozostaje bez zmian...
+          cat > app/src/debug/google-services.json <<EOF
+          {
+            "project_info": {
+              "project_number": "829995078625",
+              "project_id": "test-f856b",
+              "storage_bucket": "test-f856b.firebasestorage.app"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:829995078625:android:4d99ee10ddcf526d6278a0",
+                  "android_client_info": {
+                    "package_name": "com.example.test1"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "${FIREBASE_API_KEY}"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+
+          # Kopia dla release:
+          cp app/src/debug/google-services.json app/src/release/google-services.json
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+
+
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
         with:

@@ -192,10 +192,8 @@ fun Step1Form(
     val passwordsMatch = state.password.isNotEmpty() && state.password == state.confirmPassword
     val areFieldsFilled = state.albumNumber.isNotBlank() && state.email.isNotBlank()
 
-    // 2. Sprawdzamy, czy aplikacja nie jest w trakcie operacji w tle
     val isActionAllowed = state.status == RegisterStatus.IDLE || state.status == RegisterStatus.ERROR
 
-    // 3. Łączymy warunki: przycisk jest aktywny, jeśli pola są wypełnione, hasła się zgadzają ORAZ aplikacja nie jest zajęta
     val isButtonEnabled = passwordsMatch && areFieldsFilled && isActionAllowed
 
 

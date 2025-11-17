@@ -69,10 +69,8 @@ class SettingsRepository @Inject constructor(
         val docSnapshot = userDevicesRef.get().await()
 
         if (docSnapshot.exists() && docSnapshot.get("$DEVICES_FIELD.$deviceId") != null) {
-            // Urządzenie istnieje - aktualizuj tylko token
             userDevicesRef.update("$DEVICES_FIELD.$deviceId.token", token).await()
         } else {
-            // Nowe urządzenie - stwórz z domyślnymi ustawieniami
             val newDeviceData = mapOf(
                 DEVICES_FIELD to mapOf(
                     deviceId to mapOf(

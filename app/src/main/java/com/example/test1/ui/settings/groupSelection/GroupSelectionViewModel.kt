@@ -35,12 +35,10 @@ class GroupSelectionViewModel @Inject constructor(
     private fun loadData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            // 1. Pobierz aktualnie obserwowane grupy
             scheduleRepository.getObservedGroupIds().onSuccess { ids ->
                 _uiState.update { it.copy(selectedGroupIds = ids.toSet()) }
-            }.onFailure { /* obsłuż błąd */ }
+            }.onFailure { /* obsługa błędu */ }
 
-            // 2. Pobierz całe drzewo grup
             scheduleRepository.getAllDeanGroups().onSuccess { tree ->
                 _uiState.update { it.copy(isLoading = false, allGroupsTree = tree) }
             }.onFailure { error ->
@@ -62,7 +60,6 @@ class GroupSelectionViewModel @Inject constructor(
     fun onSaveSelection() {
         viewModelScope.launch {
             scheduleRepository.saveObservedGroups(_uiState.value.selectedGroupIds.toList()).onSuccess {
-                // Sukces - można nawigować wstecz lub pokazać komunikat
             }.onFailure { error ->
                 _uiState.update { it.copy(error = "Błąd zapisu: ${error.message}") }
             }

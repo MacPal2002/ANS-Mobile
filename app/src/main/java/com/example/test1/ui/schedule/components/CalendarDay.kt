@@ -35,7 +35,7 @@ fun CalendarDay(
 
     Box(
         modifier = Modifier
-            .aspectRatio(1f) // Zapewnia kwadratowy kształt
+            .aspectRatio(1f)
             .clip(CircleShape)
             .background(backgroundColor)
             .clickable { onDateSelected(date) },

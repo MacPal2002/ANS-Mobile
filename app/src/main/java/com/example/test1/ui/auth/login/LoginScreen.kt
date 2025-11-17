@@ -44,11 +44,8 @@ fun LoginScreen(
 ) {
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
 
-    // Pobieramy stan z ViewModelu i obserwujemy jego zmiany
     val uiState by loginViewModel.uiState.collectAsState()
 
-
-    // Krok 1: Dodajemy stan do kontrolowania widoczności banera
     var showSuccessBanner by remember { mutableStateOf(false) }
     val showLoadingOverlay = uiState.status == LoginStatus.LOADING || showSuccessBanner
 
@@ -101,7 +98,6 @@ fun LoginScreen(
                     ),
                     isError = uiState.albumNumberError != null,
                     supportingText = {
-                        // Pokaż tekst błędu pod polem
                         uiState.albumNumberError?.let {
                             Text(
                                 text = it,
@@ -152,7 +148,6 @@ fun LoginScreen(
                         }
                     },
                 )
-                // --- NOWA SEKCJA DLA BŁĘDÓW OGÓLNYCH ---
                 uiState.genericError?.let {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(

@@ -58,7 +58,7 @@ data class ScheduleEvent(
 val HourHeight = 80.dp
 const val DayStartHour = 7
 
-private const val TOTAL_PAGES = 10400 // Wystarczy na ~200 lat (52 tygodnie * 200)
+private const val TOTAL_PAGES = 10400
 private const val STARTING_PAGE = TOTAL_PAGES / 2
 
 /**
@@ -92,7 +92,6 @@ fun ScheduleScreen(
     val tertiaryContainerColor = MaterialTheme.colorScheme.tertiaryContainer
     val secondaryContainerColor = MaterialTheme.colorScheme.secondaryContainer
 
-    // Stan specyficzny dla UI (np. widoczność dialogu) może pozostać lokalny
     var showMonthPicker by remember { mutableStateOf(false) }
 
     if (showMonthPicker) {
@@ -118,22 +117,17 @@ fun ScheduleScreen(
         }
     }
     LaunchedEffect(pagerState.isScrollInProgress) {
-        // Reagujemy tylko po zakończeniu przewijania
         if (!pagerState.isScrollInProgress) {
             val newWeekStartDate = pageIndexToStartDate(pagerState.currentPage, referenceDate)
 
-            // Zachowaj ten sam dzień tygodnia, który był wybrany, ale w nowym tygodniu
             val dayOfWeekOffset = uiState.selectedDate.dayOfWeek.value.toLong() - 1
             val newSelectedDate = newWeekStartDate.plusDays(dayOfWeekOffset)
 
-            // Sprawdź, czy data faktycznie się zmieniła (żeby uniknąć pętli)
             if (newSelectedDate != uiState.selectedDate) {
                 scheduleViewModel.onDateSelected(newSelectedDate)
             }
         }
     }
-
-    // Stan dla wskaźnika aktualnego czasu może pozostać lokalny
     var currentTime by remember { mutableStateOf(LocalTime.now()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -154,7 +148,6 @@ fun ScheduleScreen(
         }
     }
 
-    // Mapuj dane z Modelu (ScheduleItem) na dane dla Widoku (ScheduleEvent)
     val displayEvents = remember(uiState.events) {
         uiState.events.map { item ->
             ScheduleEvent(

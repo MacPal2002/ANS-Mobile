@@ -21,7 +21,6 @@ fun AcademyTitle(
     Text(
         text = buildAnnotatedString {
             withStyle(style = SpanStyle(color = colorResource(R.color.primaryColor))) {
-                // Add a space right here
                 append("ANS ")
             }
             withStyle(style = SpanStyle(color = colorResource(R.color.secondaryColor))) {

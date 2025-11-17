@@ -18,7 +18,6 @@ val latoFontFamily = FontFamily(
     Font(R.font.lato_bold, FontWeight.Bold)
 )
 
-// Set of Material typography styles to start with
 val Typography = Typography(
     bodyLarge = TextStyle(
         fontFamily = latoFontFamily,

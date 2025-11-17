@@ -47,7 +47,7 @@ class SettingsViewModel @Inject constructor(
 
     private fun loadInitialUserData(userId: String) {
         if (_uiState.value.isInitialDataLoaded) {
-            return // Jeśli tak, nie rób nic
+            return
         }
 
         dataLoadingJob?.cancel()

@@ -3,7 +3,7 @@ package com.example.test1.util
 import com.google.firebase.Timestamp
 
 /**
- * Extension do bezpiecznego rzutowania Any? na List<T>
+ * Extension do rzutowania Any? na List<T>
  */
 inline fun <reified T> Any?.castList(): List<T> =
     (this as? List<*>)?.mapNotNull { it as? T } ?: emptyList()

@@ -87,7 +87,6 @@ class AuthRepository @Inject constructor(
         }
         auth.addAuthStateListener(listener)
 
-        // Ta część zostanie wywołana, gdy strumień zostanie zamknięty (np. ViewModel zniszczony)
         awaitClose { auth.removeAuthStateListener(listener) }
     }
 

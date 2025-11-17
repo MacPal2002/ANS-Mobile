@@ -17,14 +17,12 @@ fun CalendarGrid(
     onDateSelected: (LocalDate) -> Unit
 ) {
     val firstDayOfMonth = displayedMonth.atDay(1)
-    val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value // 1 for Monday, 7 for Sunday
+    val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value
     val daysInMonth = displayedMonth.lengthOfMonth()
 
-    // Obliczamy "puste" komórki na początku siatki
     val emptyCells = firstDayOfWeek - 1
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        // Tworzymy listę wszystkich 42 komórek siatki (6 wierszy * 7 dni)
         val allCells = (1..emptyCells).map { null } + (1..daysInMonth).map { displayedMonth.atDay(it) }
         val chunks = allCells.chunked(7) // Dzielimy na tygodnie
 
@@ -41,7 +39,6 @@ fun CalendarGrid(
                         }
                     }
                 }
-                // Jeśli tydzień jest niepełny, dodajemy puste Boxy dla zachowania układu
                 if (week.size < 7) {
                     for (i in 1..(7 - week.size)) {
                         Box(modifier = Modifier.weight(1f))

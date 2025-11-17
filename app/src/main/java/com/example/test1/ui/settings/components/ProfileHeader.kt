@@ -35,7 +35,7 @@ fun ProfileHeader(
             .padding(top = 32.dp), // Odstęp od TopBar
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Okrągły awatar
+        // Awatar
         Box(
             modifier = Modifier
                 .size(96.dp)

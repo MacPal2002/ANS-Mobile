@@ -82,7 +82,6 @@ fun GroupSelectionScreen(
                     contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
                     items(uiState.allGroupsTree) { node ->
-                        // Wywołujemy rekurencyjny komponent dla każdego elementu z drzewa
                         GroupNodeItem(
                             node = node,
                             selectedIds = uiState.selectedGroupIds,
@@ -99,11 +98,9 @@ fun GroupSelectionScreen(
  * zawiera grupę, która jest w zbiorze zaznaczonych ID.
  */
 private fun containsSelection(node: GroupNode, selectedIds: Set<Int>): Boolean {
-    // Przypadek bazowy: jeśli to jest grupa, sprawdź, czy jej ID jest w zbiorze
     if (node.type == "group" && node.groupId != null) {
         return selectedIds.contains(node.groupId)
     }
-    // Krok rekurencyjny: sprawdź, czy KTÓREKOLWIEK z dzieci spełnia ten warunek
     return node.children.any { child -> containsSelection(child, selectedIds) }
 }
 
@@ -120,7 +117,6 @@ private fun GroupNodeItem(
     val paddingStart = (level * 24).dp + 16.dp
 
     if (node.type == "group" && node.groupId != null) {
-        // Ta część (dla liści z Checkboxem) pozostaje bez zmian
         val groupId = node.groupId
         Row(
             modifier = Modifier
@@ -138,9 +134,6 @@ private fun GroupNodeItem(
             Text(text = node.name, style = MaterialTheme.typography.bodyLarge)
         }
     } else {
-        // ✅ ZMIANA: Logika dla rozwijanych węzłów (katalogów)
-
-        // Używamy nowej funkcji, aby ustawić stan początkowy
         var isExpanded by remember { mutableStateOf(containsSelection(node, selectedIds)) }
 
         Row(

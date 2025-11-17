@@ -10,8 +10,6 @@ class ScheduleApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-
-        // Idealne miejsce na jednorazowe operacje
         createNotificationChannel()
     }
 

@@ -98,8 +98,6 @@ class ScheduleViewModel @Inject constructor(
                             )
                         }
                     }.onFailure { error ->
-                        // BŁĄD SIECI: Aktualizujemy TYLKO błąd i stan ładowania.
-                        // Lista 'events' pozostaje nietknięta, dzięki czemu dane z cache są nadal widoczne.
                         _uiState.update {
                             it.copy(
                                 isLoading = false,

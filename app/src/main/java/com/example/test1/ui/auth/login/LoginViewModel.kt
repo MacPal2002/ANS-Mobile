@@ -17,12 +17,9 @@ class LoginViewModel @Inject constructor(
     ) : ViewModel() {
 
 
-    // Prywatny, modyfikowalny stan
     private val _uiState = MutableStateFlow(LoginState())
-    // Publiczny, niemodyfikowalny stan, którego nasłuchuje UI
     val uiState = _uiState.asStateFlow()
 
-    // Funkcja wywoływana przez UI, gdy zmieni się tekst w polu email
     fun onAlbumNumberChange(albumNumber: String) {
         _uiState.update { it.copy(albumNumber = albumNumber, albumNumberError = null, genericError = null, status = LoginStatus.IDLE) }
     }

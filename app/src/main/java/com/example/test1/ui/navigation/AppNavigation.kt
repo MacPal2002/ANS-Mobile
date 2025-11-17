@@ -27,8 +27,6 @@ fun AppNavigation() {
 
     LaunchedEffect(isLoggedIn) {
         val currentRoute = navController.currentBackStackEntry?.destination?.route
-
-        // Jeśli stan zmienił się na "wylogowany" i nie jesteśmy na ekranie logowania/rejestracji
         if (!isLoggedIn && currentRoute != "login" && currentRoute != "register") {
             navController.navigate("login") {
                 popUpTo(navController.graph.startDestinationId) {
@@ -45,7 +43,6 @@ fun AppNavigation() {
 
     NavHost(navController = navController, startDestination = startDestination) {
 
-        // Definicja ekranu logowania
         composable("login") {
             LoginScreen(
                 onLoginSuccess = {
@@ -68,7 +65,6 @@ fun AppNavigation() {
             )
         }
 
-        // Definicja ekranu rejestracji
         composable("register") {
             RegisterScreen(
                 onNavigateToLogin = {
@@ -80,7 +76,6 @@ fun AppNavigation() {
             )
         }
 
-        // Definicja ekranu rejestracji
         composable("settings") { backStackEntry ->
             val navGraphBackStackEntry = remember(backStackEntry) {
                 navController.getBackStackEntry(navController.graph.id)
@@ -89,7 +84,6 @@ fun AppNavigation() {
             SettingsScreen(
                 settingsViewModel = settingsViewModel,
                 onLogout = {
-                    // Po wylogowaniu, wróć do ekranu logowania
                     navController.navigate("login") {
                         popUpTo(navController.graph.startDestinationId) {
                             inclusive = true

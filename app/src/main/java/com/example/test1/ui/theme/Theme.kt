@@ -16,27 +16,27 @@ private val LightColorScheme = lightColorScheme(
     primary = Color(0xFF212C5D),
     secondary = Color(0xFFE8EAF6),
     background = Color(0xFFFFFFFF),
-    surface = Color(0xFFE8EAF6), // Lekko szara powierzchnia
+    surface = Color(0xFFE8EAF6),
     onPrimary = Color.White,
-    onSecondary = Color(0xFF212C5D), // Ciemniejszy tekst na jasnym tle
+    onSecondary = Color(0xFF212C5D),
     onBackground = Color(0xFF1F1F1F),
     onSurface = Color(0xFF1F1F1F),
     secondaryContainer = Color(0xFFDCEEEB),
     tertiaryContainer = Color(0xFFE8EAF6),
-    onSecondaryContainer = Color.Black, // Ciemniejszy tekst na jasnym tle
+    onSecondaryContainer = Color.Black,
     onTertiaryContainer = Color(0xFF1F1F1F),
     error = Color(0xFFD32F2F),
 
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFF57C00), // Jaśniejszy, ale wciąż nasycony niebieski
-    secondary = Color(0xFF2E3A66), // Ciemniejsze tło dla elementów
-    background = Color(0xFF121212), // Głęboka czerń tła
-    surface = Color(0xFF1E1E1E), // Nieco jaśniejsza powierzchnia kart
-    onPrimary = Color(0xFFE8EAF6), // Ciemny tekst na jasnym przycisku
+    primary = Color(0xFFF57C00),
+    secondary = Color(0xFF2E3A66),
+    background = Color(0xFF121212),
+    surface = Color(0xFF1E1E1E),
+    onPrimary = Color(0xFFE8EAF6),
     onSecondary = Color.White,
-    onBackground = Color(0xFFE0E0E0), // Lekko szary tekst
+    onBackground = Color(0xFFE0E0E0),
     onSurface = Color(0xFFE0E0E0),
     onSecondaryContainer = Color(0xFFEADDFF),
     tertiaryContainer = Color(0xFF523A3A),
@@ -60,9 +60,7 @@ fun AppTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // Ustawiamy pasek na przezroczysty
             window.statusBarColor = Color.Transparent.toArgb()
-            // Ta linia kontroluje, czy ikony na pasku (zegar, bateria) są ciemne czy jasne
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }

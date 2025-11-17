@@ -39,17 +39,14 @@ class RegisterViewModel @Inject constructor(
         _uiState.update { it.copy(verbisPassword = value) }
     }
     fun onNextStep() {
-        // Pobieramy aktualny stan
         val currentState = _uiState.value
         var hasError = false
 
-        // Walidacja numeru albumu
         if (currentState.albumNumber.isBlank()) {
             _uiState.update { it.copy(albumNumberError = "Pole nie może być puste") }
             hasError = true
         }
 
-        // Walidacja e-maila
         if (currentState.email.isBlank()) {
             _uiState.update { it.copy(emailError = "Pole nie może być puste") }
             hasError = true
@@ -58,7 +55,6 @@ class RegisterViewModel @Inject constructor(
             hasError = true
         }
 
-        // Walidacja haseł
         if (currentState.password.length < 6) {
             _uiState.update { it.copy(passwordError = "Hasło musi mieć co najmniej 6 znaków") }
             hasError = true
@@ -67,10 +63,7 @@ class RegisterViewModel @Inject constructor(
             hasError = true
         }
 
-        // Jeśli wystąpił jakikolwiek błąd, przerywamy funkcję
         if (hasError) return
-
-        // Jeśli wszystko jest w porządku, przechodzimy dalej
         _uiState.update { it.copy(currentStep = 2) }
     }
     fun onPreviousStep() {

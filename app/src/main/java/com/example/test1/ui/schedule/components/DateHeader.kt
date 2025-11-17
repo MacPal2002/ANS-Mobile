@@ -38,9 +38,9 @@ fun DateHeader(
 
     val currentYear = LocalDate.now().year
     val pattern = if (selectedDate.year == currentYear) {
-        "E, d MMMM" // Format bez roku, np. "Wt., 24 czerwca"
+        "E, d MMMM"
     } else {
-        "E, d MMMM uuuu" // Pełny format z rokiem, np. "Śr., 25 czerwca 2026"
+        "E, d MMMM uuuu"
     }
     val formatter = DateTimeFormatter.ofPattern(pattern, Locale("pl"))
     val isToday = selectedDate == LocalDate.now()
@@ -72,8 +72,6 @@ fun DateHeader(
                 )
             }
         }
-
-        // Tytuł z datą
         Text(
             text = selectedDate.format(formatter).replaceFirstChar { it.titlecase(Locale("pl")) },
             style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
@@ -84,7 +82,6 @@ fun DateHeader(
             textAlign = TextAlign.Center
         )
 
-        // Kontener na przycisk po prawej stronie
         Box(
             modifier = Modifier.width(90.dp),
             contentAlignment = Alignment.Center

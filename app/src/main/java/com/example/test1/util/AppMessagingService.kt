@@ -16,8 +16,6 @@ import com.google.firebase.messaging.RemoteMessage
 
 class AppMessagingService : FirebaseMessagingService() {
 
-
-    // Wywoływane, gdy token FCM jest generowany lub odświeżany
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d("FCM", "Nowy/odświeżony token: $token")
@@ -27,16 +25,13 @@ class AppMessagingService : FirebaseMessagingService() {
         }
     }
 
-    // Wywoływane, gdy aplikacja otrzyma powiadomienie
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
         Log.d("FCM", "Otrzymano wiadomość: ${remoteMessage.from}")
 
-        // Wyświetl powiadomienie tylko jeśli ma ono część "notification"
         remoteMessage.notification?.let { notification ->
             Log.d("FCM", "Tytuł: ${notification.title}, Treść: ${notification.body}")
 
-            // Pobierz dodatkowe dane, np. ID zajęć, do nawigacji
             val classId = remoteMessage.data["classId"]
 
             sendNotification(notification.title, notification.body, classId)
@@ -44,10 +39,8 @@ class AppMessagingService : FirebaseMessagingService() {
     }
 
     private fun sendNotification(title: String?, body: String?, classId: String?) {
-        // Utwórz Intent, który otworzy aplikację po kliknięciu
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            // Przekaż ID zajęć, aby MainActivity wiedziało, co otworzyć
             putExtra("EXTRA_CLASS_ID", classId)
         }
 
@@ -61,12 +54,11 @@ class AppMessagingService : FirebaseMessagingService() {
             .setContentTitle(title)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(pendingIntent) // Akcja po kliknięciu
-            .setAutoCancel(true) // Automatyczne zamykanie po kliknięciu
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
 
 
         with(NotificationManagerCompat.from(this)) {
-            // ✅ Sprawdź uprawnienia przed wywołaniem notify()
             if (checkNotificationPermission(this@AppMessagingService)) {
                 notify(System.currentTimeMillis().toInt(), notificationBuilder.build())
             } else {
@@ -74,8 +66,6 @@ class AppMessagingService : FirebaseMessagingService() {
             }
         }
     }
-
-    // Funkcja do aktualizacji tokena w Firestore
     private fun updateTokenInFirestore(userId: String, token: String) {
         Firebase.installations.id.addOnSuccessListener { deviceId ->
             val tokenPath = "devices.$deviceId.token"

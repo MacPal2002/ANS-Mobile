@@ -15,17 +15,13 @@ class AppAuthViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    // Ten Flow będzie informował, czy użytkownik jest aktualnie zalogowany.
-    // Konwertujemy FirebaseUser? na prosty Boolean.
     val isLoggedIn: StateFlow<Boolean> = authRepository.getAuthStateFlow()
         .map { firebaseUser -> firebaseUser != null }
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000), // Utrzymaj Flow aktywny przez 5s po zniknięciu ostatniego subskrybenta
-            initialValue = authRepository.getCurrentUserId() != null // Wartość początkowa
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = authRepository.getCurrentUserId() != null
         )
-
-    // Prosta właściwość do sprawdzenia stanu początkowego (dla startDestination)
     val isInitiallyLoggedIn: Boolean
         get() = authRepository.getCurrentUserId() != null
 }

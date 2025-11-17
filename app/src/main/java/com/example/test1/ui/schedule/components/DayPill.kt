@@ -29,21 +29,21 @@ fun DayPill(date: LocalDate, isSelected: Boolean, onClick: () -> Unit) {
     val isWeekend = date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
 
     val containerColor = when {
-        isSelected -> MaterialTheme.colorScheme.primary     // Ciemne tło dla zaznaczonego dnia
-        isToday -> MaterialTheme.colorScheme.tertiaryContainer      // Jasne tło dla dzisiejszego dnia
-        else -> Color.Transparent      // Brak tła dla pozostałych
+        isSelected -> MaterialTheme.colorScheme.primary
+        isToday -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> Color.Transparent
     }
 
     val dayOfMonthColor = when {
-        isSelected -> Color.White      // Biały tekst na ciemnym tle
-        isToday -> MaterialTheme.colorScheme.onTertiaryContainer       // Ciemny tekst (główny kolor) na jasnym tle
-        else -> MaterialTheme.colorScheme.onBackground              // Domyślny kolor tekstu
+        isSelected -> Color.White
+        isToday -> MaterialTheme.colorScheme.onTertiaryContainer
+        else -> MaterialTheme.colorScheme.onBackground
     }
 
     val dayOfWeekColor = when {
         isSelected -> Color.White
         isToday -> MaterialTheme.colorScheme.onTertiaryContainer
-        isWeekend -> Color(0xFFB71C1C)  // Czerwony dla weekendu
+        isWeekend -> Color(0xFFB71C1C)
         else -> MaterialTheme.colorScheme.onBackground
     }
 

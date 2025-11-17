@@ -36,8 +36,8 @@ class ScheduleRepository @Inject constructor(
 ) {
 
     private val jsonParser = Json {
-        ignoreUnknownKeys = true // Ignoruje nieznane pola w JSON
-        isLenient = true         // Pozwala na pewne luźniejsze formatowanie JSON
+        ignoreUnknownKeys = true
+        isLenient = true
     }
 
     fun getObservedGroupsFlow(): Flow<Result<List<ObservedGroup>>> = callbackFlow {
@@ -51,14 +51,13 @@ class ScheduleRepository @Inject constructor(
         val listenerRegistration = firestore.collection("student_observed_groups").document(userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e("DEBUG", "Listener error: ", error) // LOG BŁĘDU
+                    Log.e("DEBUG", "Listener error: ", error)
                     trySend(Result.failure(error))
                     close(error)
                     return@addSnapshotListener
                 }
 
                 if (snapshot != null && snapshot.exists()) {
-                    // LOG 1: Sprawdzamy, co jest w całym dokumencie
                     Log.d("DEBUG", "Snapshot received. Data: ${snapshot.data}")
 
                     val rawData = snapshot.get("groups")
@@ -66,7 +65,6 @@ class ScheduleRepository @Inject constructor(
                     val groupIds = (rawData as? List<*>)
                         ?.mapNotNull { item ->
                             Log.d("DEBUG", "Processing item: $item, Type: ${item?.javaClass?.name}")
-                            // Używamy bezpieczniejszego bloku 'when' do konwersji
                             when (item) {
                                 is Number -> item.toInt()
                                 else -> null
@@ -102,9 +100,7 @@ class ScheduleRepository @Inject constructor(
 
             val groups = documents.map { doc ->
                 ObservedGroup(
-                    // ZMIANA #3: ID grupy bierzemy z ID dokumentu i zamieniamy z powrotem na liczbę.
                     id = doc.id.toIntOrNull() ?: -1,
-                    // Nazwę grupy bierzemy z pola "groupName".
                     name = doc.getString("groupName") ?: "Brak nazwy"
                 )
             }
@@ -123,9 +119,6 @@ class ScheduleRepository @Inject constructor(
             val dataMap = result.data as? Map<*, *>
             if (dataMap != null) {
                 val jsonString = JSONObject(dataMap).toString()
-
-                // --- TUTAJ DODAJESZ LOGOWANIE ---
-                // "ServerResponse" to tag, po którym łatwo znajdziesz log w Logcat.
                 Log.d("ServerResponse", "Odpowiedź z getAllDeanGroups: $jsonString")
                 // ------------------------------------
 
@@ -134,13 +127,11 @@ class ScheduleRepository @Inject constructor(
 
                 Result.success(groupTree)
             } else {
-                // Możesz też zalogować, gdy dane są puste
                 Log.w("ServerResponse", "Otrzymano puste (null) dane z serwera.")
                 Result.failure(Exception("Otrzymano puste lub niepoprawne dane."))
             }
 
         } catch (e: Exception) {
-            // Dobrą praktyką jest też logowanie samego błędu
             Log.e("ServerResponse", "Błąd podczas pobierania danych: ", e)
 
             // Twoja obsługa błędów pozostaje bez zmian
@@ -165,13 +156,11 @@ class ScheduleRepository @Inject constructor(
 
                 Result.failure(Exception("Brak połączenia z internetem. Sprawdź sieć i spróbuj ponownie."))
             } else {
-                // Dla wszystkich innych błędów, zwracamy oryginalny komunikat
                 Result.failure(e)
             }
         }
     }
 
-    // Pobiera listę ID obserwowanych grup z profilu użytkownika
     suspend fun getObservedGroupIds(): Result<List<Int>> {
         val userId = auth.currentUser?.uid ?: return Result.failure(Exception("Użytkownik nie jest zalogowany."))
         return try {
@@ -189,7 +178,6 @@ class ScheduleRepository @Inject constructor(
 
                 Result.failure(Exception("Brak połączenia z internetem. Sprawdź sieć i spróbuj ponownie."))
             } else {
-                // Dla wszystkich innych błędów, zwracamy oryginalny komunikat
                 Result.failure(e)
             }
         }
@@ -206,24 +194,19 @@ class ScheduleRepository @Inject constructor(
         val cachedSchedule = scheduleDao.getScheduleByGroupAndDate(groupId, date)
         emit(Result.success(cachedSchedule))
 
-        // 2. Spróbuj pobrać świeże dane z sieci w tle
         try {
             val remoteSchedule = fetchScheduleFromFirebase(groupId, date)
 
-            // 3. Zaktualizuj bazę danych
             scheduleDao.deleteScheduleByGroupAndDate(groupId, date)
             scheduleDao.insertSchedule(remoteSchedule)
 
-            // 4. Pobierz nowe dane z bazy (jedyne źródło prawdy) i wyemituj je ponownie
             val newScheduleFromDb = scheduleDao.getScheduleByGroupAndDate(groupId, date)
             emit(Result.success(newScheduleFromDb))
         } catch (e: Exception) {
-            // 5. W przypadku błędu sieci, wyemituj błąd.
-            // UI wciąż będzie miało ostatnie dane z cache, które dostało na początku.
             Log.e(
                 "ScheduleRepo",
                 "Failed to fetch remote schedule. Exception type: ${e.javaClass.simpleName}, Message: ${e.message}",
-                e // Zostawiamy 'e', aby zobaczyć pełny stack trace
+                e
             )
             emit(handleFirebaseException(e))
         }
@@ -244,7 +227,6 @@ class ScheduleRepository @Inject constructor(
             .call(data)
             .await()
 
-        // Bezpieczne rzutowanie elementów listy
         val scheduleData = (result.data as? Map<*, *>)?.get("schedule")
             .castList<Map<String, Any>>()
 

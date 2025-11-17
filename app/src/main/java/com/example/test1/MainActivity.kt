@@ -43,7 +43,6 @@ class MainActivity : ComponentActivity() {
             }
 
             AppTheme(darkTheme = useDarkTheme) {
-                // Pobieramy aktualną wartość ze stanu
                 val updateInfo by updateInfoState
 
                 AppNavigation()
@@ -64,7 +63,7 @@ class MainActivity : ComponentActivity() {
             .setGitHubUserAndRepo("MacPal2002", "ans-nt-app_release")
             .withListener(object : AppUpdaterUtils.UpdateListener {
                 override fun onSuccess(update: Update, isUpdateAvailable: Boolean?) {
-                    // --- POCZĄTEK LOGOWANIA ---
+                    // --- LOGI ---
                     Log.d("AppUpdater", "Sprawdzanie aktualizacji zakończone powodzeniem.")
                     Log.d("AppUpdater", "Czy aktualizacja jest dostępna? -> $isUpdateAvailable")
                     Log.d("AppUpdater", "Najnowsza wersja: ${update.latestVersion}")

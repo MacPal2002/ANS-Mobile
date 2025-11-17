@@ -30,14 +30,12 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    // KROK 2: Przepis na dostarczenie DataStore
     @Provides
     @Singleton
     fun provideDataStore(@ApplicationContext context: Context): DataStore<Preferences> {
         return context.dataStore
     }
 
-    // --- Przepisy na zależności z Firebase ---
 
     @Provides
     @Singleton
@@ -55,7 +53,6 @@ object AppModule {
     @Singleton
     fun provideFirebaseFirestore(): FirebaseFirestore = Firebase.firestore
 
-    // --- Przepisy na lokalną bazę danych Room ---
     @Provides
     @Singleton
     fun provideAppDatabase(app: Application): AppDatabase {

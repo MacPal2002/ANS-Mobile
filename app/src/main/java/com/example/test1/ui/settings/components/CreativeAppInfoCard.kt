@@ -44,7 +44,7 @@ fun CreativeAppInfoCard() {
     val versionName = try {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName
     } catch (e: Exception) {
-        "1.0.0" // Wartość zapasowa w razie błędu
+        "1.0.0"
     }
 
     Card(

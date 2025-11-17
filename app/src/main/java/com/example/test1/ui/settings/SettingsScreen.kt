@@ -86,15 +86,11 @@ fun SettingsScreen(
             onDismissRequest = { showThemeDialog = false }
         )
     }
-    // To jest stan, który przechowuje informację o tym, czy aplikacja ma uprawnienia do wysyłania powiadomień.
-    // Jego początkowa wartość jest pobierana za pomocą checkNotificationPermission(context),
-    // która sprawdza stan uprawnień przy pierwszym uruchomieniu.
 
     var hasNotificationPermission by remember {
         mutableStateOf(checkNotificationPermission(context))
     }
 
-    // Obserwujemy zmiany w cyklu życia, aby zaktualizować stan uprawnień, gdy aplikacja wraca na pierwszy plan.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -108,7 +104,6 @@ fun SettingsScreen(
         }
     }
 
-    // Rejestrujemy launcher do obsługi prośby o uprawnienia do powiadomień.
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted: Boolean ->

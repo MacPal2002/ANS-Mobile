@@ -33,13 +33,11 @@ fun EventCard(event: ScheduleEvent) {
     Card(
         modifier = Modifier
             .fillMaxSize()
-            // ZMIANA 3: Dodajemy padding na dole, aby stworzyć odstęp
             .padding(end = 16.dp, start = 8.dp, bottom = 8.dp),
-        shape = RoundedCornerShape(12.dp), // Ładniejsze, bardziej zaokrąglone rogi
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = event.color)
     ) {
         Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
-            // Główna treść, wyrównana do góry
             Column(
                 modifier = Modifier.align(Alignment.TopStart),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -50,8 +48,6 @@ fun EventCard(event: ScheduleEvent) {
                     Text(text = detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
                 }
             }
-
-            // Godzina, "przyklejona" do prawego dolnego rogu
             Row(
                 modifier = Modifier.align(Alignment.BottomEnd),
                 verticalAlignment = Alignment.CenterVertically

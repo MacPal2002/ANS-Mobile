@@ -28,11 +28,7 @@ fun EventGrid(
     val hourHeightPx = with(density) { hourHeight.toPx() }
 
     val lineColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)
-    // ZMIANA: Dodajemy Box jako główny kontener, aby móc rysować tło i layout
     Box(modifier = modifier) {
-
-        // ZMIANA: Dodajemy Canvas do rysowania linii godzinowych w tle.
-        // Te linie będą się przewijać razem z resztą.
         Canvas(modifier = Modifier.matchParentSize()) {
             for (hour in DayStartHour..22) {
                 val yPosition = (hour - DayStartHour) * hourHeightPx
@@ -44,8 +40,6 @@ fun EventGrid(
                 )
             }
         }
-
-        // Twój kod z Layout pozostaje w środku, jest teraz rysowany na wierzchu linii
         Layout(
             content = {
                 events.forEach { event ->
@@ -90,7 +84,6 @@ fun EventGrid(
     }
 }
 
-// Customowy modifier do przekazywania danych do layoutu
 private class EventData(val event: ScheduleEvent) : ParentDataModifier {
     override fun Density.modifyParentData(parentData: Any?) = this@EventData
 }

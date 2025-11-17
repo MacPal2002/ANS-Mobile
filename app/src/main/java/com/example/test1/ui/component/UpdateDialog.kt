@@ -23,11 +23,10 @@ import com.example.test1.util.startApkDownload
 @Composable
 fun UpdateDialog(update: Update, onDismiss: () -> Unit) {
     val context = LocalContext.current
-    // Stan do śledzenia, czy pobieranie się rozpoczęło
     val isDownloading = remember { mutableStateOf(false) }
 
     AlertDialog(
-        onDismissRequest = { if (!isDownloading.value) onDismiss() }, // Nie zamykaj, gdy trwa pobieranie
+        onDismissRequest = { if (!isDownloading.value) onDismiss() },
         title = { Text("Dostępna aktualizacja!") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -55,16 +54,13 @@ fun UpdateDialog(update: Update, onDismiss: () -> Unit) {
         confirmButton = {
             Button(
                 onClick = {
-                    val version = update.latestVersion // np. "1.2.1"
-                    // 1. Ręcznie budujemy poprawny, bezpośredni link do pobrania
+                    val version = update.latestVersion
                     val directDownloadUrl = "https://github.com/MacPal2002/ans-nt-app_release/releases/download/v$version/app-v$version.apk"
-                    // 2. Logujemy go, aby mieć pewność, że jest poprawny
                     Log.d("UpdateDialog", "Ręcznie zbudowany link: $directDownloadUrl")
-                    // 3. Używamy NASZEGO linku do rozpoczęcia pobierania
                     startApkDownload(context, directDownloadUrl, version)
                     isDownloading.value = true
                 },
-                enabled = !isDownloading.value // Wyłącz przycisk po rozpoczęciu pobierania
+                enabled = !isDownloading.value
             ) {
                 if (isDownloading.value) {
                     Text("Pobieranie...")
@@ -76,7 +72,7 @@ fun UpdateDialog(update: Update, onDismiss: () -> Unit) {
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                enabled = !isDownloading.value // Wyłącz przycisk po rozpoczęciu pobierania
+                enabled = !isDownloading.value
             ) {
                 Text("Później")
             }

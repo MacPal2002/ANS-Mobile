@@ -9,7 +9,6 @@ import androidx.core.content.ContextCompat
 import android.net.Uri
 import android.provider.Settings
 
-// To jest teraz publiczna funkcja, dostępna w całej aplikacji
 fun checkNotificationPermission(context: Context): Boolean {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         ContextCompat.checkSelfPermission(
@@ -17,7 +16,6 @@ fun checkNotificationPermission(context: Context): Boolean {
             Manifest.permission.POST_NOTIFICATIONS
         ) == PackageManager.PERMISSION_GRANTED
     } else {
-        // Na starszych wersjach uprawnienia są zawsze "przyznane"
         true
     }
 }
@@ -30,7 +28,6 @@ fun canRequestPackageInstalls(context: Context): Boolean {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         context.packageManager.canRequestPackageInstalls()
     } else {
-        // Na starszych wersjach to uprawnienie nie jest wymagane
         true
     }
 }
